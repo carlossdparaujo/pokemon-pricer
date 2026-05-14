@@ -3,8 +3,10 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
+    "dev": "pnpm run dev:bff & pnpm run dev:frontend",
     "dev:frontend": "pnpm --filter @pokemon-pricer/frontend dev",
     "dev:bff": "pnpm --filter @pokemon-pricer/bff dev",
+    "stop": "lsof -ti :3000,:5173 | xargs kill -9 2>/dev/null || true",
     "build": "pnpm -r build",
     "test": "pnpm -r test"
   }

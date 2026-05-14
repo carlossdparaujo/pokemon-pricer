@@ -1,9 +1,18 @@
 .main {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   background-color: #cc0000;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.pokeball {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
 }
 
 .title {
@@ -12,4 +21,62 @@
   color: #ffffff;
   letter-spacing: -0.02em;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 360px;
+}
+
+.input {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.input:focus {
+  border-color: #ffffff;
+}
+
+.button {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: #ffffff;
+  color: #cc0000;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.button:hover {
+  opacity: 0.9;
+}
+
+.result {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  color: #ffffff;
+  text-align: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.result p {
+  margin: 0.25rem 0;
+  font-size: 1rem;
 }
