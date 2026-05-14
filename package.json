@@ -1,0 +1,11 @@
+{
+  "name": "pokemon-pricer",
+  "private": true,
+  "version": "0.0.1",
+  "scripts": {
+    "dev:frontend": "pnpm --filter @pokemon-pricer/frontend dev",
+    "dev:bff": "pnpm --filter @pokemon-pricer/bff dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  }
+}
