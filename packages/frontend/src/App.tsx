@@ -11,7 +11,7 @@ export default function App() {
   const [set, setSet] = useState('')
   const [card, setCard] = useState<PokemonCard | null>(null)
 
-  function search(e: React.FormEvent) {
+  function search(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
     const params = new URLSearchParams({ name, set })
     fetch(`/api/pokemon-cards?${params}`)
