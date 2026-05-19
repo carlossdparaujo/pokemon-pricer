@@ -16,12 +16,17 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+
+@keyframes bounce {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -14px; }
 }
 
 .spinning {
-  animation: spin 1s linear infinite;
+  animation: spin 0.9s linear infinite, bounce 0.7s ease-in-out infinite;
 }
 
 .title {
@@ -38,6 +43,13 @@
   gap: 0.75rem;
   width: 100%;
   max-width: 360px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.formHidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .input {

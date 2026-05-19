@@ -76,26 +76,26 @@ test('pokeball gains spinning class while search is in progress', () => {
   expect(pokeball.className).toMatch(/spinning/)
 })
 
-test('hides form fields while search is in progress', () => {
+test('form fades out while search is in progress', () => {
   vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
 
   render(<App />)
-  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+  const form = screen.getByTestId('search-form')
+  expect(form.className).not.toMatch(/formHidden/)
 
-  expect(screen.queryByPlaceholderText('Pokémon name')).not.toBeInTheDocument()
-  expect(screen.queryByPlaceholderText('Set name')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument()
+  fireEvent.submit(form)
+
+  expect(form.className).toMatch(/formHidden/)
 })
 
-test('shows form fields again after search completes', async () => {
+test('form fades back in after search completes', async () => {
   stubFetch([])
 
   render(<App />)
-  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+  const form = screen.getByTestId('search-form')
+  fireEvent.submit(form)
 
-  await waitFor(() => expect(screen.getByPlaceholderText('Pokémon name')).toBeInTheDocument())
-  expect(screen.getByPlaceholderText('Set name')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument()
+  await waitFor(() => expect(form.className).not.toMatch(/formHidden/))
 })
 
 test('renders priceSummary values formatted as dollars', async () => {

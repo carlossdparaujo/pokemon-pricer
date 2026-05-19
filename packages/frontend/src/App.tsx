@@ -30,6 +30,7 @@ export default function App() {
 
   function search(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isSearching) return
     setIsSearching(true)
     const params = new URLSearchParams({ name, set })
     fetch(`/api/pokemon-cards?${params}`)
@@ -53,24 +54,24 @@ export default function App() {
         <circle cx="50" cy="50" r="8" fill="white"/>
       </svg>
       <h1 className={styles.title}>Pokémon Pricer</h1>
-      <form className={styles.form} onSubmit={search}>
-        {!isSearching && (
-          <>
-            <input
-              className={styles.input}
-              placeholder="Pokémon name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-            <input
-              className={styles.input}
-              placeholder="Set name"
-              value={set}
-              onChange={e => setSet(e.target.value)}
-            />
-            <button className={styles.button} type="submit">Search</button>
-          </>
-        )}
+      <form
+        data-testid="search-form"
+        className={`${styles.form}${isSearching ? ` ${styles.formHidden}` : ''}`}
+        onSubmit={search}
+      >
+        <input
+          className={styles.input}
+          placeholder="Pokémon name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <input
+          className={styles.input}
+          placeholder="Set name"
+          value={set}
+          onChange={e => setSet(e.target.value)}
+        />
+        <button className={styles.button} type="submit">Search</button>
       </form>
       {cards !== null && (
         cards.length === 0 ? (
