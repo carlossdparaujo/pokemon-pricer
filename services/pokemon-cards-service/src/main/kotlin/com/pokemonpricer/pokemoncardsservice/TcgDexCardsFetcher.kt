@@ -15,7 +15,7 @@ private data class TcgDexCardBrief(val id: String, val name: String, val image: 
 @Serializable
 private data class TcgDexSetBrief(val id: String, val name: String)
 
-class TcgDexCardsFetcher {
+class TcgDexCardsFetcher(private val pricesFetcher: PricesFetcher) {
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
@@ -46,7 +46,7 @@ class TcgDexCardsFetcher {
             if (nameFilter != null) parameter("name", nameFilter)
             paginationParams(page, numberOfItems)
         }.body<List<TcgDexCardBrief>>()
-            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image), priceSummary = zeroPriceSummary(card.id)) }
+            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image), priceSummary = pricesFetcher(card.id)) }
 
     private suspend fun fetchCardsBriefByName(nameFilter: String?, page: Int, numberOfItems: Int): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
@@ -66,16 +66,14 @@ class TcgDexCardsFetcher {
             runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
         }
 
-    private fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {
+    private suspend fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {
         val setId = setIdFromCardId(brief.id)
-        return Card(id = brief.id, name = brief.name, set = setNames[setId] ?: setId, imageUrl = imageUrl(brief.image), priceSummary = zeroPriceSummary(brief.id))
+        return Card(id = brief.id, name = brief.name, set = setNames[setId] ?: setId, imageUrl = imageUrl(brief.image), priceSummary = pricesFetcher(brief.id))
     }
 
     private fun setIdFromCardId(cardId: String): String = cardId.substringBeforeLast("-")
 
     private fun imageUrl(image: String?): String = image?.let { "$it/high.webp" } ?: ""
-
-    private fun zeroPriceSummary(cardId: String) = PriceSummary(cardId = cardId, average = 0.0, p10 = 0.0, p50 = 0.0, p90 = 0.0, p99 = 0.0)
 
     companion object {
         private const val BASE_URL = "https://api.tcgdex.net/v2/en"
