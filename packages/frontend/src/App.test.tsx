@@ -3,6 +3,15 @@ import App from './App'
 
 afterEach(() => vi.unstubAllGlobals())
 
+const stubPriceSummary = (cardId: string) => ({
+  cardId,
+  average: 2.5,
+  p10: 1.0,
+  p50: 2.25,
+  p90: 4.0,
+  p99: 6.5,
+})
+
 function stubFetch(cards: object[]) {
   vi.stubGlobal(
     'fetch',
@@ -29,8 +38,8 @@ test('search submits name and set as query params to the BFF', () => {
 
 test('renders a list of cards returned by the BFF', async () => {
   stubFetch([
-    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png' },
-    { id: 'neo1-16', name: 'Pikachu', set: 'Neo Genesis', imageUrl: 'https://img/pikachu2.png' },
+    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') },
+    { id: 'neo1-16', name: 'Pikachu', set: 'Neo Genesis', imageUrl: 'https://img/pikachu2.png', priceSummary: stubPriceSummary('neo1-16') },
   ])
 
   render(<App />)
@@ -53,4 +62,34 @@ test('shows empty state when no cards are returned', async () => {
   await waitFor(() => {
     expect(screen.getByText('No cards found.')).toBeInTheDocument()
   })
+})
+
+test('renders priceSummary values formatted as dollars', async () => {
+  stubFetch([
+    {
+      id: 'base1-4',
+      name: 'Charizard',
+      set: 'Base Set',
+      imageUrl: 'https://img/charizard.png',
+      priceSummary: {
+        cardId: 'base1-4',
+        average: 350.0,
+        p10: 200.0,
+        p50: 330.0,
+        p90: 500.0,
+        p99: 750.0,
+      },
+    },
+  ])
+
+  render(<App />)
+  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+
+  await waitFor(() => {
+    expect(screen.getByText('$350.00')).toBeInTheDocument()
+  })
+  expect(screen.getByText('$200.00')).toBeInTheDocument()
+  expect(screen.getByText('$330.00')).toBeInTheDocument()
+  expect(screen.getByText('$500.00')).toBeInTheDocument()
+  expect(screen.getByText('$750.00')).toBeInTheDocument()
 })

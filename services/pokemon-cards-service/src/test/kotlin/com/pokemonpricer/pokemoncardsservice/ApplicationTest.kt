@@ -101,4 +101,39 @@ class ApplicationTest {
         assertEquals("Base Set", card.set)
         assertTrue(card.imageUrl.isNotBlank())
     }
+
+    @Test
+    fun `response card has priceSummary with all required fields`() = testApp {
+        val client = jsonClient()
+        val response = client.get("/cards?name=charizard")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val body = response.body<CardsResponse>()
+        assertEquals(1, body.cards.size)
+
+        val priceSummary = body.cards.first().priceSummary
+        assertEquals("base1-4", priceSummary.cardId)
+        assertTrue(priceSummary.average > 0.0)
+        assertTrue(priceSummary.p10 > 0.0)
+        assertTrue(priceSummary.p50 > 0.0)
+        assertTrue(priceSummary.p90 > 0.0)
+        assertTrue(priceSummary.p99 > 0.0)
+        assertTrue(priceSummary.p10 < priceSummary.p50)
+        assertTrue(priceSummary.p50 < priceSummary.p90)
+        assertTrue(priceSummary.p90 < priceSummary.p99)
+    }
+
+    @Test
+    fun `all stub cards have priceSummary`() = testApp {
+        val client = jsonClient()
+        val response = client.get("/cards")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val body = response.body<CardsResponse>()
+        assertTrue(body.cards.isNotEmpty())
+        assertTrue(body.cards.all { it.priceSummary.cardId == it.id })
+        assertTrue(body.cards.all { it.priceSummary.average > 0.0 })
+    }
 }

@@ -1,11 +1,25 @@
 import { useState } from 'react'
 import styles from './App.module.css'
 
+interface PriceSummary {
+  cardId: string
+  average: number
+  p10: number
+  p50: number
+  p90: number
+  p99: number
+}
+
 interface PokemonCard {
   id: string
   name: string
   set: string
   imageUrl: string
+  priceSummary: PriceSummary
+}
+
+function formatPrice(value: number): string {
+  return `$${value.toFixed(2)}`
 }
 
 export default function App() {
@@ -56,6 +70,28 @@ export default function App() {
                 <img src={card.imageUrl} alt={card.name} className={styles.cardImage} />
                 <p className={styles.cardName}>{card.name}</p>
                 <p className={styles.cardSet}>{card.set}</p>
+                <dl className={styles.prices}>
+                  <div className={styles.priceRow}>
+                    <dt className={styles.priceLabel}>Avg</dt>
+                    <dd className={styles.priceValue}>{formatPrice(card.priceSummary.average)}</dd>
+                  </div>
+                  <div className={styles.priceRow}>
+                    <dt className={styles.priceLabel}>P10</dt>
+                    <dd className={styles.priceValue}>{formatPrice(card.priceSummary.p10)}</dd>
+                  </div>
+                  <div className={styles.priceRow}>
+                    <dt className={styles.priceLabel}>P50</dt>
+                    <dd className={styles.priceValue}>{formatPrice(card.priceSummary.p50)}</dd>
+                  </div>
+                  <div className={styles.priceRow}>
+                    <dt className={styles.priceLabel}>P90</dt>
+                    <dd className={styles.priceValue}>{formatPrice(card.priceSummary.p90)}</dd>
+                  </div>
+                  <div className={styles.priceRow}>
+                    <dt className={styles.priceLabel}>P99</dt>
+                    <dd className={styles.priceValue}>{formatPrice(card.priceSummary.p99)}</dd>
+                  </div>
+                </dl>
               </li>
             ))}
           </ul>

@@ -11,11 +11,22 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
+data class PriceSummary(
+    val cardId: String,
+    val average: Double,
+    val p10: Double,
+    val p50: Double,
+    val p90: Double,
+    val p99: Double,
+)
+
+@Serializable
 data class Card(
     val id: String,
     val name: String,
     val set: String,
     val imageUrl: String,
+    val priceSummary: PriceSummary,
 )
 
 @Serializable
@@ -27,18 +38,42 @@ val stubCards = listOf(
         name = "Charizard",
         set = "Base Set",
         imageUrl = "https://images.pokemontcg.io/base1/4.png",
+        priceSummary = PriceSummary(
+            cardId = "base1-4",
+            average = 350.0,
+            p10 = 200.0,
+            p50 = 330.0,
+            p90 = 500.0,
+            p99 = 750.0,
+        ),
     ),
     Card(
         id = "base1-25",
-        name = "Dewgong",
+        name = "Pikachu",
         set = "Base Set",
         imageUrl = "https://images.pokemontcg.io/base1/25.png",
+        priceSummary = PriceSummary(
+            cardId = "base1-25",
+            average = 2.5,
+            p10 = 1.0,
+            p50 = 2.25,
+            p90 = 4.0,
+            p99 = 6.5,
+        ),
     ),
     Card(
         id = "neo1-16",
-        name = "Togetic",
+        name = "Pikachu",
         set = "Neo Genesis",
         imageUrl = "https://images.pokemontcg.io/neo1/16.png",
+        priceSummary = PriceSummary(
+            cardId = "neo1-16",
+            average = 8.0,
+            p10 = 3.5,
+            p50 = 7.5,
+            p90 = 13.0,
+            p99 = 20.0,
+        ),
     ),
 )
 
