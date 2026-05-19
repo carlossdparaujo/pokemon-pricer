@@ -13,19 +13,26 @@ import kotlin.test.assertTrue
 
 class ApplicationTest {
 
-    private fun testApp(fetcher: CardsFetcher, block: suspend ApplicationTestBuilder.() -> Unit) =
-        testApplication {
-            application {
-                configureSerialization()
-                configureRouting(fetcher)
-            }
-            block()
+    private val stubPricesFetcher: PricesFetcher = { cardId ->
+        PriceSummary(cardId = cardId, average = 5.0, p10 = 1.0, p50 = 4.5, p90 = 12.0, p99 = 25.0)
+    }
+
+    private fun testApp(
+        fetcher: CardsFetcher,
+        pricesFetcher: PricesFetcher = stubPricesFetcher,
+        block: suspend ApplicationTestBuilder.() -> Unit,
+    ) = testApplication {
+        application {
+            configureSerialization()
+            configureRouting(pricesFetcher = pricesFetcher, fetchCards = fetcher)
         }
+        block()
+    }
 
     private fun card(id: String, name: String, set: String = "Base Set") = Card(
         id = id, name = name, set = set,
         imageUrl = "https://img/$id.png",
-        priceSummary = PriceSummary(cardId = id, average = 0.0, p10 = 0.0, p50 = 0.0, p90 = 0.0, p99 = 0.0),
+        priceSummary = PriceSummary(cardId = id, average = 5.0, p10 = 1.0, p50 = 4.5, p90 = 12.0, p99 = 25.0),
     )
 
     @Test
@@ -146,5 +153,31 @@ class ApplicationTest {
         assertTrue(body.cards.isNotEmpty())
         assertTrue(body.cards.all { it.priceSummary.cardId == it.id })
         assertTrue(body.cards.all { it.priceSummary.average > 0.0 })
+    }
+
+    @Test
+    fun `fetched price summary is included in card response`() {
+        val specificPrices = PriceSummary(cardId = "base1-4", average = 99.0, p10 = 50.0, p50 = 95.0, p90 = 150.0, p99 = 300.0)
+        val customPricesFetcher: PricesFetcher = { _ -> specificPrices }
+        val fetcherUsingPrices: CardsFetcher = { _, _ ->
+            listOf(Card(id = "base1-4", name = "Charizard", set = "Base Set", imageUrl = "https://img/c.png", priceSummary = customPricesFetcher("base1-4")))
+        }
+        testApp(
+            fetcher = fetcherUsingPrices,
+            pricesFetcher = customPricesFetcher,
+        ) {
+            val client = createClient { install(ContentNegotiation) { json() } }
+            val res = client.get("/cards?name=charizard")
+            assertEquals(HttpStatusCode.OK, res.status)
+            val body = res.body<CardsResponse>()
+            assertEquals(1, body.cards.size)
+            val priceSummary = body.cards.first().priceSummary
+            assertEquals("base1-4", priceSummary.cardId)
+            assertEquals(99.0, priceSummary.average)
+            assertEquals(50.0, priceSummary.p10)
+            assertEquals(95.0, priceSummary.p50)
+            assertEquals(150.0, priceSummary.p90)
+            assertEquals(300.0, priceSummary.p99)
+        }
     }
 }

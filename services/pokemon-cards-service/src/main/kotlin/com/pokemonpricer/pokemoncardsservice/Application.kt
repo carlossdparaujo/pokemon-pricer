@@ -34,7 +34,12 @@ data class CardsResponse(val cards: List<Card>)
 
 typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?) -> List<Card>
 
-fun Application.configureRouting(fetchCards: CardsFetcher = TcgDexCardsFetcher().build()) {
+typealias PricesFetcher = suspend (cardId: String) -> PriceSummary
+
+fun Application.configureRouting(
+    pricesFetcher: PricesFetcher = PokemonPricesFetcher().build(),
+    fetchCards: CardsFetcher = TcgDexCardsFetcher(pricesFetcher).build(),
+) {
     routing {
         get("/cards") {
             val nameFilter = call.request.queryParameters["name"]?.lowercase()
