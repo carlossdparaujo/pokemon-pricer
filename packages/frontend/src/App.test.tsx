@@ -166,6 +166,45 @@ test('renders priceSummary values formatted as dollars', async () => {
   expect(screen.getByText('$750.00')).toBeInTheDocument()
 })
 
+test('scrolls to top when navigating to the next page', async () => {
+  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fetchMock.mockReturnValue(new Promise(() => {}))
+  scrollTo.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
+test('scrolls to top when navigating to the previous page', async () => {
+  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  fetchMock.mockReturnValue(new Promise(() => {}))
+  scrollTo.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
 test('page resets to 1 when a new search starts', async () => {
   const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))

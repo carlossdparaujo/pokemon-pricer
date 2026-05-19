@@ -32,6 +32,7 @@ export default function App() {
   function fetchPage(nameFilter: string, setFilter: string, pageNumber: number) {
     if (isSearching) return
     setIsSearching(true)
+    setCards(null)
     const params = new URLSearchParams({ name: nameFilter, set: setFilter, page: String(pageNumber) })
     fetch(`/api/pokemon-cards?${params}`)
       .then(res => res.json())
@@ -48,12 +49,14 @@ export default function App() {
   }
 
   function goToPreviousPage() {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     const newPage = page - 1
     setPage(newPage)
     fetchPage(name, set, newPage)
   }
 
   function goToNextPage() {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     const newPage = page + 1
     setPage(newPage)
     fetchPage(name, set, newPage)
