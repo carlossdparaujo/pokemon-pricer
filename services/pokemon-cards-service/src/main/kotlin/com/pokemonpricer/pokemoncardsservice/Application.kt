@@ -11,22 +11,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class PriceSummary(
-    val cardId: String,
-    val average: Double,
-    val p10: Double,
-    val p50: Double,
-    val p90: Double,
-    val p99: Double,
-)
-
-@Serializable
 data class Card(
     val id: String,
     val name: String,
     val set: String,
     val imageUrl: String,
-    val priceSummary: PriceSummary,
 )
 
 @Serializable
@@ -34,11 +23,8 @@ data class CardsResponse(val cards: List<Card>)
 
 typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?, page: Int, numberOfItems: Int) -> List<Card>
 
-typealias PricesFetcher = suspend (cardId: String) -> PriceSummary
-
 fun Application.configureRouting(
-    pricesFetcher: PricesFetcher = PokemonPricesFetcher().build(),
-    fetchCards: CardsFetcher = TcgDexCardsFetcher(pricesFetcher).build(),
+    fetchCards: CardsFetcher = TcgDexCardsFetcher().build(),
 ) {
     routing {
         get("/cards") {

@@ -6,25 +6,19 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ApplicationTest {
 
-    private val stubPricesFetcher: PricesFetcher = { cardId ->
-        PriceSummary(cardId = cardId, average = 5.0, p10 = 1.0, p50 = 4.5, p90 = 12.0, p99 = 25.0)
-    }
-
     private fun testApp(
         fetcher: CardsFetcher,
-        pricesFetcher: PricesFetcher = stubPricesFetcher,
         block: suspend ApplicationTestBuilder.() -> Unit,
     ) = testApplication {
         application {
             configureSerialization()
-            configureRouting(pricesFetcher = pricesFetcher, fetchCards = fetcher)
+            configureRouting(fetchCards = fetcher)
         }
         block()
     }
@@ -32,7 +26,6 @@ class ApplicationTest {
     private fun card(id: String, name: String, set: String = "Base Set") = Card(
         id = id, name = name, set = set,
         imageUrl = "https://img/$id.png",
-        priceSummary = PriceSummary(cardId = id, average = 5.0, p10 = 1.0, p50 = 4.5, p90 = 12.0, p99 = 25.0),
     )
 
     @Test
@@ -109,76 +102,6 @@ class ApplicationTest {
         assertEquals("Charizard", card.name)
         assertEquals("Base Set", card.set)
         assertTrue(card.imageUrl.isNotBlank())
-    }
-
-    @Test
-    fun `response card has priceSummary with all required fields`() = testApp(
-        fetcher = { _, _, _, _ ->
-            listOf(
-                Card(
-                    id = "base1-4", name = "Charizard", set = "Base Set",
-                    imageUrl = "https://img/charizard.png",
-                    priceSummary = PriceSummary(cardId = "base1-4", average = 350.0, p10 = 200.0, p50 = 330.0, p90 = 500.0, p99 = 750.0),
-                )
-            )
-        }
-    ) {
-        val client = createClient { install(ContentNegotiation) { json() } }
-        val res = client.get("/cards?name=charizard")
-        assertEquals(HttpStatusCode.OK, res.status)
-        val body = res.body<CardsResponse>()
-        assertEquals(1, body.cards.size)
-        val priceSummary = body.cards.first().priceSummary
-        assertEquals("base1-4", priceSummary.cardId)
-        assertTrue(priceSummary.average > 0.0)
-        assertTrue(priceSummary.p10 > 0.0)
-        assertTrue(priceSummary.p50 > 0.0)
-        assertTrue(priceSummary.p90 > 0.0)
-        assertTrue(priceSummary.p99 > 0.0)
-    }
-
-    @Test
-    fun `all returned cards have priceSummary`() = testApp(
-        fetcher = { _, _, _, _ ->
-            listOf(
-                Card("base1-4", "Charizard", "Base Set", "https://img/c.png", PriceSummary("base1-4", 350.0, 200.0, 330.0, 500.0, 750.0)),
-                Card("base1-25", "Dewgong", "Base Set", "https://img/d.png", PriceSummary("base1-25", 2.5, 1.0, 2.25, 4.0, 6.5)),
-            )
-        }
-    ) {
-        val client = createClient { install(ContentNegotiation) { json() } }
-        val res = client.get("/cards")
-        assertEquals(HttpStatusCode.OK, res.status)
-        val body = res.body<CardsResponse>()
-        assertTrue(body.cards.isNotEmpty())
-        assertTrue(body.cards.all { it.priceSummary.cardId == it.id })
-        assertTrue(body.cards.all { it.priceSummary.average > 0.0 })
-    }
-
-    @Test
-    fun `fetched price summary is included in card response`() {
-        val specificPrices = PriceSummary(cardId = "base1-4", average = 99.0, p10 = 50.0, p50 = 95.0, p90 = 150.0, p99 = 300.0)
-        val customPricesFetcher: PricesFetcher = { _ -> specificPrices }
-        val fetcherUsingPrices: CardsFetcher = { _, _, _, _ ->
-            listOf(Card(id = "base1-4", name = "Charizard", set = "Base Set", imageUrl = "https://img/c.png", priceSummary = customPricesFetcher("base1-4")))
-        }
-        testApp(
-            fetcher = fetcherUsingPrices,
-            pricesFetcher = customPricesFetcher,
-        ) {
-            val client = createClient { install(ContentNegotiation) { json() } }
-            val res = client.get("/cards?name=charizard")
-            assertEquals(HttpStatusCode.OK, res.status)
-            val body = res.body<CardsResponse>()
-            assertEquals(1, body.cards.size)
-            val priceSummary = body.cards.first().priceSummary
-            assertEquals("base1-4", priceSummary.cardId)
-            assertEquals(99.0, priceSummary.average)
-            assertEquals(50.0, priceSummary.p10)
-            assertEquals(95.0, priceSummary.p50)
-            assertEquals(150.0, priceSummary.p90)
-            assertEquals(300.0, priceSummary.p99)
-        }
     }
 
     @Test
