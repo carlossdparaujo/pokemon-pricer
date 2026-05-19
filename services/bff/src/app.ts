@@ -1,62 +1,45 @@
 import { Hono } from 'hono'
+import { CardsClient, createGrpcCardsClient } from './cards-client.js'
+import { PricesClient, createGrpcPricesClient } from './prices-client.js'
 
-const POKEMON_CARDS_SERVICE_URL =
-  process.env.POKEMON_CARDS_SERVICE_URL ?? 'http://localhost:8080'
+const POKEMON_CARDS_SERVICE_GRPC_ADDRESS =
+  process.env.POKEMON_CARDS_SERVICE_GRPC_ADDRESS ?? 'localhost:9090'
 
-const POKEMON_PRICES_SERVICE_URL =
-  process.env.POKEMON_PRICES_SERVICE_URL ?? 'http://localhost:8081'
+const POKEMON_PRICES_SERVICE_GRPC_ADDRESS =
+  process.env.POKEMON_PRICES_SERVICE_GRPC_ADDRESS ?? 'localhost:9091'
 
-const app = new Hono()
+export function createApp(cardsClient: CardsClient, pricesClient: PricesClient): Hono {
+  const app = new Hono()
 
-app.get('/api/health', (c) => c.json({ status: 'ok' }))
+  app.get('/api/health', (c) => c.json({ status: 'ok' }))
 
-app.get('/api/pokemon-cards', async (c) => {
-  const name = c.req.query('name')
-  const set = c.req.query('set')
-  const page = c.req.query('page') ?? '1'
+  app.get('/api/pokemon-cards', async (c) => {
+    const name = c.req.query('name') ?? ''
+    const set = c.req.query('set') ?? ''
+    const page = Number(c.req.query('page') ?? '1')
 
-  const params = new URLSearchParams()
-  if (name) params.set('name', name)
-  if (set) params.set('set', set)
-  params.set('page', page)
-  params.set('numberOfItems', '20')
-
-  try {
-    const upstream = await fetch(
-      `${POKEMON_CARDS_SERVICE_URL}/cards?${params.toString()}`
-    )
-
-    if (!upstream.ok) {
+    try {
+      const cards = await cardsClient.getCards({ name, set, page, numberOfItems: 20 })
+      return c.json({ cards })
+    } catch {
       return c.json({ error: 'Failed to fetch cards' }, 500)
     }
+  })
 
-    return c.json(await upstream.json())
-  } catch {
-    return c.json({ error: 'Failed to fetch cards' }, 500)
-  }
-})
-
-app.post('/api/pokemon-prices', async (c) => {
-  try {
-    const body = await c.req.json()
-
-    const upstream = await fetch(
-      `${POKEMON_PRICES_SERVICE_URL}/prices/batch`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    )
-
-    if (!upstream.ok) {
+  app.post('/api/pokemon-prices', async (c) => {
+    try {
+      const body = await c.req.json()
+      const prices = await pricesClient.getPricesBatch(body)
+      return c.json(prices)
+    } catch {
       return c.json({ error: 'Failed to fetch prices' }, 500)
     }
+  })
 
-    return c.json(await upstream.json())
-  } catch {
-    return c.json({ error: 'Failed to fetch prices' }, 500)
-  }
-})
+  return app
+}
 
-export default app
+export default createApp(
+  createGrpcCardsClient(POKEMON_CARDS_SERVICE_GRPC_ADDRESS),
+  createGrpcPricesClient(POKEMON_PRICES_SERVICE_GRPC_ADDRESS)
+)
