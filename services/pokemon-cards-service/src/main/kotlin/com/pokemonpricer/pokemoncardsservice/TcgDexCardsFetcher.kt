@@ -9,12 +9,16 @@ import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.collections.map
 
 @Serializable
 private data class TcgDexCardBrief(val id: String, val name: String, val image: String? = null)
 
 @Serializable
-private data class TcgDexSetBrief(val id: String, val name: String)
+private data class TcgDexSetSerie(val id: String, val name: String)
+
+@Serializable
+private data class TcgDexSetBrief(val serie: TcgDexSetSerie, val name: String, val cards: List<TcgDexCardBrief>)
 
 class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
 
@@ -23,12 +27,16 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
     }
 
     fun build(): CardsFetcher = { nameFilter, setFilter, page, numberOfItems ->
-        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter, page, numberOfItems)
+        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter)
         else fetchByNameFilter(nameFilter, page, numberOfItems)
     }
 
-    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
-        findSetsMatching(setFilter).flatMap { set -> fetchCardsInSet(set, nameFilter, page, numberOfItems) }
+    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?): List<Card> {
+        val setsMatching = findSetsMatching(setFilter)
+        return setsMatching.cards
+            .filter { it.name.lowercase().contains(nameFilter ?: "") }
+            .map { card -> Card(id = card.id, name = card.name, set = setsMatching.name, imageUrl = imageUrl(card.image)) }
+    }
 
     private suspend fun fetchByNameFilter(nameFilter: String?, page: Int, numberOfItems: Int): List<Card> {
         val cards = fetchCardsBriefByName(nameFilter, page, numberOfItems)
@@ -36,17 +44,8 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
         return cards.map { toCard(it, setNames) }
     }
 
-    private suspend fun findSetsMatching(setFilter: String): List<TcgDexSetBrief> =
-        client.get("$BASE_URL/sets") {
-            parameter("name", setFilter)
-        }.body()
-
-    private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
-        client.get("$BASE_URL/sets/${set.id}/cards") {
-            if (nameFilter != null) parameter("name", nameFilter)
-            paginationParams(page, numberOfItems)
-        }.body<List<TcgDexCardBrief>>()
-            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image)) }
+    private suspend fun findSetsMatching(setFilter: String): TcgDexSetBrief =
+        client.get("$BASE_URL/sets/$setFilter").body()
 
     private suspend fun fetchCardsBriefByName(nameFilter: String?, page: Int, numberOfItems: Int): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
