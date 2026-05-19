@@ -64,6 +64,67 @@ test('shows empty state when no cards are returned', async () => {
   })
 })
 
+test('pokeball gains spinning class and wrapper gains bouncing class while search is in progress', () => {
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  const pokeball = screen.getByTestId('pokeball')
+  const wrapper = screen.getByTestId('pokeball-wrapper')
+  expect(pokeball.className).not.toMatch(/spinning/)
+  expect(wrapper.className).not.toMatch(/bouncing/)
+
+  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+
+  expect(pokeball.className).toMatch(/spinning/)
+  expect(wrapper.className).toMatch(/bouncing/)
+})
+
+test('form fades out while search is in progress', () => {
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  const form = screen.getByTestId('search-form')
+  expect(form.className).not.toMatch(/formHidden/)
+
+  fireEvent.submit(form)
+
+  expect(form.className).toMatch(/formHidden/)
+})
+
+test('fades out previous results when a new search starts', async () => {
+  stubFetch([
+    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') },
+  ])
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByText('Pikachu')).toBeInTheDocument())
+
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  expect(screen.getByTestId('results-container').className).toMatch(/resultsHidden/)
+})
+
+test('form fades back in after search completes', async () => {
+  stubFetch([])
+
+  render(<App />)
+  const form = screen.getByTestId('search-form')
+  fireEvent.submit(form)
+
+  await waitFor(() => expect(form.className).not.toMatch(/formHidden/))
+})
+
+test('results container fades back in after search completes', async () => {
+  stubFetch([])
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByTestId('results-container').className).not.toMatch(/resultsHidden/))
+})
+
 test('renders priceSummary values formatted as dollars', async () => {
   stubFetch([
     {

@@ -12,7 +12,24 @@
 .pokeball {
   width: 80px;
   height: 80px;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+.bouncing {
+  animation: bounce 0.7s ease-in-out infinite;
 }
 
 .title {
@@ -29,6 +46,14 @@
   gap: 0.75rem;
   width: 100%;
   max-width: 360px;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.formHidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.7s ease;
 }
 
 .input {
@@ -69,6 +94,16 @@
 .empty {
   color: rgba(255, 255, 255, 0.8);
   font-size: 1rem;
+}
+
+.resultsWrapper {
+  transition: opacity 0.5s ease;
+}
+
+.resultsHidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.7s ease;
 }
 
 .results {
