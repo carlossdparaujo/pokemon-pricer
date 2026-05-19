@@ -4,19 +4,25 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "copy-protos": "mkdir -p src/proto && cp ../pokemon-cards-service/src/main/proto/cards.proto ../pokemon-prices-service/src/main/proto/prices.proto src/proto/",
+    "generate": "mkdir -p src/generated && ./node_modules/.bin/grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=generic-definitions,env=node,useOptionals=all --proto_path=./src/proto ./src/proto/cards.proto ./src/proto/prices.proto",
+    "predev": "pnpm run copy-protos && pnpm run generate",
     "dev": "tsx watch src/index.ts",
+    "prebuild": "pnpm run copy-protos && pnpm run generate",
     "build": "tsup src/index.ts --format esm",
     "start": "node dist/index.js",
     "test": "vitest"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.12.0",
-    "@grpc/proto-loader": "^0.7.15",
+    "@bufbuild/protobuf": "^2.12.0",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.7.0"
+    "hono": "^4.7.0",
+    "nice-grpc": "^2.1.16"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "grpc-tools": "^1.13.1",
+    "ts-proto": "^2.11.8",
     "tsup": "^8.4.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.3",

@@ -1,0 +1,26 @@
+syntax = "proto3";
+package pokemonpricer.cards;
+option java_package = "com.pokemonpricer.pokemoncardsservice.grpc";
+option java_multiple_files = true;
+
+service PokemonCardsService {
+  rpc GetCards (GetCardsRequest) returns (GetCardsResponse);
+}
+
+message GetCardsRequest {
+  optional string name = 1;
+  optional string set = 2;
+  optional int32 page = 3;
+  optional int32 number_of_items = 4;
+}
+
+message Card {
+  optional string id = 1;
+  optional string name = 2;
+  optional string set = 3;
+  optional string image_url = 4;
+}
+
+message GetCardsResponse {
+  repeated Card cards = 1;
+}

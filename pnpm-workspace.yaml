@@ -3,4 +3,5 @@ packages:
   - 'services/bff'
 allowBuilds:
   esbuild: true
+  grpc-tools: true
   protobufjs: true
