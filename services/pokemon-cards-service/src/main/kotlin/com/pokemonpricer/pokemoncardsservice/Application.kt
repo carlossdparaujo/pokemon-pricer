@@ -11,7 +11,23 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable
-data class Card(val id: String, val name: String, val set: String, val imageUrl: String)
+data class PriceSummary(
+    val cardId: String,
+    val average: Double,
+    val p10: Double,
+    val p50: Double,
+    val p90: Double,
+    val p99: Double,
+)
+
+@Serializable
+data class Card(
+    val id: String,
+    val name: String,
+    val set: String,
+    val imageUrl: String,
+    val priceSummary: PriceSummary,
+)
 
 @Serializable
 data class CardsResponse(val cards: List<Card>)

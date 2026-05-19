@@ -113,3 +113,28 @@
   font-size: 0.8rem;
   text-align: center;
 }
+
+.prices {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  width: 100%;
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.priceLabel {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+  font-style: normal;
+}
+
+.priceValue {
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0;
+}
