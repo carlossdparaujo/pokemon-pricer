@@ -9,5 +9,5 @@ export interface PricesClient {
 
 export function createPricesClient(address: string): PricesClient {
   // nice-grpc uses DeepPartial<T> for request params; the cast is safe since GetPricesBatchRequest satisfies that at runtime
-  return createClient(PokemonPricesServiceDefinition, createChannel(address)) as unknown as PricesClient
+  return createClient(PokemonPricesServiceDefinition, createChannel(address)) as PricesClient
 }

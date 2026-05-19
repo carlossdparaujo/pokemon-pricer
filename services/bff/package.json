@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "copy-protos": "mkdir -p src/proto && cp ../pokemon-cards-service/src/main/proto/cards.proto ../pokemon-prices-service/src/main/proto/prices.proto src/proto/",
-    "generate": "mkdir -p src/generated && ./node_modules/.bin/grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=generic-definitions,env=node --proto_path=./src/proto ./src/proto/cards.proto ./src/proto/prices.proto",
+    "generate": "mkdir -p src/generated && ./node_modules/.bin/grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=generic-definitions,env=node,useOptionals=all --proto_path=./src/proto ./src/proto/cards.proto ./src/proto/prices.proto",
     "predev": "pnpm run copy-protos && pnpm run generate",
     "dev": "tsx watch src/index.ts",
     "prebuild": "pnpm run copy-protos && pnpm run generate",

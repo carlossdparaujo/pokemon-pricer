@@ -9,5 +9,5 @@ export interface CardsClient {
 
 export function createCardsClient(address: string): CardsClient {
   // nice-grpc uses DeepPartial<T> for request params; the cast is safe since GetCardsRequest satisfies that at runtime
-  return createClient(PokemonCardsServiceDefinition, createChannel(address)) as unknown as CardsClient
+  return createClient(PokemonCardsServiceDefinition, createChannel(address)) as CardsClient
 }
