@@ -10,6 +10,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlin.collections.map
+import org.slf4j.LoggerFactory
 
 @Serializable
 private data class TcgDexCardBrief(val id: String, val name: String, val image: String? = null)
@@ -22,6 +23,8 @@ private data class TcgDexSetBrief(val serie: TcgDexSetSerie, val name: String, v
 
 class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
 
+    private val logger = LoggerFactory.getLogger(TcgDexCardsFetcher::class.java)
+
     private val client = HttpClient(engine) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
@@ -32,7 +35,7 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
     }
 
     private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?): List<Card> {
-        val setsMatching = findSetsMatching(setFilter)
+        val setsMatching = findSetsMatching(setFilter.replace(" ", "+"))
         return setsMatching.cards
             .filter { it.name.lowercase().contains(nameFilter ?: "") }
             .map { card -> Card(id = card.id, name = card.name, set = setsMatching.name, imageUrl = imageUrl(card.image)) }
@@ -62,7 +65,10 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
     // We batch-fetch each unique set to get the display name (e.g. "Base Set") instead of exposing the raw ID.
     private suspend fun resolveSetNames(cards: List<TcgDexCardBrief>): Map<String, String> =
         cards.map { setIdFromCardId(it.id) }.distinct().associateWith { setId ->
-            runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
+            runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { e ->
+                logger.error("Failed to fetch set name for '{}': {}", setId, e.message, e)
+                setId
+            }
         }
 
     private fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {

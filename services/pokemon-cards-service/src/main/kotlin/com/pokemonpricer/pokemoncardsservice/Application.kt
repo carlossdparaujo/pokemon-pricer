@@ -2,6 +2,7 @@ package com.pokemonpricer.pokemoncardsservice
 
 import io.grpc.ServerBuilder
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 
 @Serializable
 data class Card(
@@ -13,6 +14,8 @@ data class Card(
 
 typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?, page: Int, numberOfItems: Int) -> List<Card>
 
+private val logger = LoggerFactory.getLogger("com.pokemonpricer.pokemoncardsservice.Application")
+
 fun main() {
     val cardsFetcher = TcgDexCardsFetcher().build()
 
@@ -21,6 +24,10 @@ fun main() {
         .build()
         .start()
 
-    Runtime.getRuntime().addShutdownHook(Thread { grpcServer.shutdown() })
+    logger.info("Pokemon Cards service started on port 9090")
+    Runtime.getRuntime().addShutdownHook(Thread {
+        logger.info("Shutting down Pokemon Cards service")
+        grpcServer.shutdown()
+    })
     grpcServer.awaitTermination()
 }

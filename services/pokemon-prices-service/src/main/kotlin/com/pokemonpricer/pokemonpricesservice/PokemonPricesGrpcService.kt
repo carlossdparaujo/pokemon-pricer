@@ -7,14 +7,19 @@ import com.pokemonpricer.pokemonpricesservice.grpc.PriceSummary
 import com.pokemonpricer.pokemonpricesservice.grpc.priceSummary
 import com.pokemonpricer.pokemonpricesservice.grpc.getPricesBatchResponse
 import kotlinx.coroutines.delay
+import org.slf4j.LoggerFactory
 
 class PokemonPricesGrpcService : PokemonPricesServiceGrpcKt.PokemonPricesServiceCoroutineImplBase() {
 
+    private val logger = LoggerFactory.getLogger(PokemonPricesGrpcService::class.java)
+
     override suspend fun getPricesBatch(request: GetPricesBatchRequest): GetPricesBatchResponse {
+        logger.info("getPricesBatch: {} cards requested", request.cardsCount)
         delay(1_000)
         val prices = request.cardsList.associate { card ->
             card.cardId to stubPriceSummary(card.cardId)
         }
+        logger.info("getPricesBatch: returning {} prices", prices.size)
         return getPricesBatchResponse { this.prices.putAll(prices) }
     }
 

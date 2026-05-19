@@ -46,7 +46,7 @@ class PokemonCardsGrpcServiceTest {
         val mockEngine = MockEngine { request ->
             when (request.url.encodedPath) {
                 "/v2/en/cards" -> jsonOk("""[{"id":"base1-25","name":"Pikachu","image":"https://assets.tcgdex.net/en/base/base1/25"}]""")
-                "/v2/en/sets/base1" -> jsonOk("""{"id":"base1","name":"Base Set"}""")
+                "/v2/en/sets/base1" -> jsonOk("""{"serie":{"id":"base","name":"Base"},"name":"Base Set","cards":[{"id":"base1-25","name":"Pikachu","image":"https://assets.tcgdex.net/en/base/base1/25"}]}""")
                 else -> error("Unexpected request: ${request.url}")
             }
         }
@@ -102,8 +102,9 @@ class PokemonCardsGrpcServiceTest {
     fun `returns all cards when no filter given`() = runBlocking {
         val mockEngine = MockEngine { request ->
             when (request.url.encodedPath) {
-                "/v2/en/cards" -> jsonOk("""[{"id":"base1-4","name":"Charizard"},{"id":"base1-25","name":"Pikachu"}]""")
-                "/v2/en/sets/base1" -> jsonOk("""{"id":"base1","name":"Base Set"}""")
+                "/v2/en/cards" -> jsonOk("""[{"id":"base1-4","name":"Charizard"},{"id":"neo1-25","name":"Pikachu"}]""")
+                "/v2/en/sets/base1" -> jsonOk("""{"serie":{"id":"base","name":"Base"},"name":"Base Set","cards":[{"id":"base1-4","name":"Charizard"}]}""")
+                "/v2/en/sets/neo1" -> jsonOk("""{"serie":{"id":"base","name":"Base"},"name":"Base Set","cards":[{"id":"neo1-25","name":"Pikachu"}]}""")
                 else -> error("Unexpected request: ${request.url}")
             }
         }
