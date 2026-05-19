@@ -92,6 +92,15 @@
   font-size: 1rem;
 }
 
+.resultsWrapper {
+  transition: opacity 0.3s ease;
+}
+
+.resultsHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .results {
   display: flex;
   flex-wrap: wrap;

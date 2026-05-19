@@ -73,8 +73,12 @@ export default function App() {
         />
         <button className={styles.button} type="submit">Search</button>
       </form>
-      {!isSearching && cards !== null && (
-        cards.length === 0 ? (
+      {cards !== null && (
+        <div
+          data-testid="results-container"
+          className={`${styles.resultsWrapper}${isSearching ? ` ${styles.resultsHidden}` : ''}`}
+        >
+        {cards.length === 0 ? (
           <p className={styles.empty}>No cards found.</p>
         ) : (
           <ul className={styles.results}>
@@ -108,7 +112,8 @@ export default function App() {
               </li>
             ))}
           </ul>
-        )
+        )}
+        </div>
       )}
     </main>
   )
