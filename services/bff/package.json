@@ -4,7 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "copy-protos": "mkdir -p src/proto && cp ../pokemon-cards-service/src/main/proto/cards.proto ../pokemon-prices-service/src/main/proto/prices.proto src/proto/",
+    "predev": "pnpm run copy-protos",
     "dev": "tsx watch src/index.ts",
+    "prebuild": "pnpm run copy-protos",
     "build": "tsup src/index.ts --format esm",
     "start": "node dist/index.js",
     "test": "vitest"
