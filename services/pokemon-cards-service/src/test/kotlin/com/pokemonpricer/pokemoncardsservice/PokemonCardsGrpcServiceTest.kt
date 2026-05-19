@@ -59,6 +59,44 @@ class PokemonCardsGrpcServiceTest {
     }
 
     @Test
+    fun `returns cards from set when only set filter is present`() = runBlocking {
+        val mockEngine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/v2/en/sets" -> jsonOk("""[{"id":"base1","name":"Base Set"}]""")
+                "/v2/en/sets/base1/cards" -> jsonOk("""[{"id":"base1-4","name":"Charizard"},{"id":"base1-25","name":"Pikachu"}]""")
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+        val stub = startServer(TcgDexCardsFetcher(mockEngine).build())
+
+        val response = stub.getCards(GetCardsRequest.newBuilder().setSet("Base Set").build())
+
+        assertEquals(2, response.cardsList.size)
+        assertTrue(response.cardsList.any { it.name == "Charizard" && it.set == "Base Set" })
+        assertTrue(response.cardsList.any { it.name == "Pikachu" && it.set == "Base Set" })
+    }
+
+    @Test
+    fun `returns cards matching both name and set filters`() = runBlocking {
+        val mockEngine = MockEngine { request ->
+            when (request.url.encodedPath) {
+                "/v2/en/sets" -> jsonOk("""[{"id":"base1","name":"Base Set"}]""")
+                "/v2/en/sets/base1/cards" -> jsonOk("""[{"id":"base1-4","name":"Charizard"}]""")
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+        val stub = startServer(TcgDexCardsFetcher(mockEngine).build())
+
+        val response = stub.getCards(
+            GetCardsRequest.newBuilder().setName("charizard").setSet("Base Set").build()
+        )
+
+        assertEquals(1, response.cardsList.size)
+        assertEquals("Charizard", response.cardsList.first().name)
+        assertEquals("Base Set", response.cardsList.first().set)
+    }
+
+    @Test
     fun `returns all cards when no filter given`() = runBlocking {
         val mockEngine = MockEngine { request ->
             when (request.url.encodedPath) {
