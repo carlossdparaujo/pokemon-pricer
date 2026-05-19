@@ -1,82 +1,105 @@
 import { useState } from 'react'
 import styles from './App.module.css'
+import CardList, { type Card, type PriceSummary } from './CardList'
 
-interface PriceSummary {
-  cardId: string
-  average: number
-  p10: number
-  p50: number
-  p90: number
-  p99: number
-}
+type Tab = 'name' | 'set'
 
-interface Card {
-  id: string
-  name: string
-  set: string
-  imageUrl: string
-}
-
-function formatPrice(value: number): string {
-  return `$${value.toFixed(2)}`
+function loadPrices(
+  cards: Card[],
+  onData: (prices: Record<string, PriceSummary>) => void,
+  onDone: () => void
+) {
+  const payload = cards.map(c => ({ cardId: c.id, name: c.name, set: c.set }))
+  fetch('/api/pokemon-prices', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+    .then(res => res.json())
+    .then(data => onData(data as Record<string, PriceSummary>))
+    .finally(onDone)
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('name')
+
+  // Tab 1: search by Pokémon name
   const [name, setName] = useState('')
   const [set, setSet] = useState('')
-  const [cards, setCards] = useState<Card[] | null>(null)
-  const [prices, setPrices] = useState<Record<string, PriceSummary> | null>(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isPricesLoading, setIsPricesLoading] = useState(false)
+  const [nameCards, setNameCards] = useState<Card[] | null>(null)
+  const [namePrices, setNamePrices] = useState<Record<string, PriceSummary> | null>(null)
+  const [nameSearching, setNameSearching] = useState(false)
+  const [namePricesLoading, setNamePricesLoading] = useState(false)
   const [page, setPage] = useState(1)
 
-  function fetchPage(nameFilter: string, setFilter: string, pageNumber: number) {
-    if (isSearching) return
-    setIsSearching(true)
-    setCards(null)
-    setPrices(null)
+  // Tab 2: browse by set
+  const [browseSet, setBrowseSet] = useState('')
+  const [browseCards, setBrowseCards] = useState<Card[] | null>(null)
+  const [browsePrices, setBrowsePrices] = useState<Record<string, PriceSummary> | null>(null)
+  const [browseSearching, setBrowseSearching] = useState(false)
+  const [browsePricesLoading, setBrowsePricesLoading] = useState(false)
+
+  const isSearching = activeTab === 'name' ? nameSearching : browseSearching
+
+  function fetchNamePage(nameFilter: string, setFilter: string, pageNumber: number) {
+    if (nameSearching) return
+    setNameSearching(true)
+    setNameCards(null)
+    setNamePrices(null)
     const params = new URLSearchParams({ name: nameFilter, set: setFilter, page: String(pageNumber) })
     fetch(`/api/pokemon-cards?${params}`)
       .then(res => res.json())
       .then(data => {
-        const fetchedCards: Card[] = data.cards
-        setCards(fetchedCards)
-        if (fetchedCards.length > 0) {
-          setIsPricesLoading(true)
-          const batchPayload = fetchedCards.map(c => ({ cardId: c.id, name: c.name, set: c.set }))
-          fetch('/api/pokemon-prices', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(batchPayload),
-          })
-            .then(res => res.json())
-            .then(priceData => setPrices(priceData as Record<string, PriceSummary>))
-            .finally(() => setIsPricesLoading(false))
+        const fetched: Card[] = data.cards
+        setNameCards(fetched)
+        if (fetched.length > 0) {
+          setNamePricesLoading(true)
+          loadPrices(fetched, setNamePrices, () => setNamePricesLoading(false))
         }
       })
-      .finally(() => setIsSearching(false))
+      .finally(() => setNameSearching(false))
   }
 
-  function search(e: React.SubmitEvent<HTMLFormElement>) {
+  function searchByName(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    const newPage = 1
-    setPage(newPage)
-    fetchPage(name, set, newPage)
+    setPage(1)
+    fetchNamePage(name, set, 1)
   }
 
   function goToPreviousPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     const newPage = page - 1
     setPage(newPage)
-    fetchPage(name, set, newPage)
+    fetchNamePage(name, set, newPage)
   }
 
   function goToNextPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     const newPage = page + 1
     setPage(newPage)
-    fetchPage(name, set, newPage)
+    fetchNamePage(name, set, newPage)
+  }
+
+  function searchBySet(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (browseSearching) return
+    setBrowseSearching(true)
+    setBrowseCards(null)
+    setBrowsePrices(null)
+    const params = new URLSearchParams({ set: browseSet, page: '1' })
+    fetch(`/api/pokemon-cards?${params}`)
+      .then(res => res.json())
+      .then(data => {
+        const fetched: Card[] = data.cards
+        setBrowseCards(fetched)
+        if (fetched.length > 0) {
+          setBrowsePricesLoading(true)
+          loadPrices(fetched, setBrowsePrices, () => setBrowsePricesLoading(false))
+        }
+      })
+      .finally(() => setBrowseSearching(false))
   }
 
   return (
@@ -96,113 +119,103 @@ export default function App() {
         </svg>
       </div>
       <h1 className={styles.title}>Pokémon Pricer</h1>
-      <form
-        data-testid="search-form"
-        className={`${styles.form}${isSearching ? ` ${styles.formHidden}` : ''}`}
-        onSubmit={search}
-      >
-        <input
-          className={styles.input}
-          placeholder="Pokémon name"
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
-        <input
-          className={styles.input}
-          placeholder="Set name"
-          value={set}
-          onChange={e => setSet(e.target.value)}
-        />
-        <button className={styles.button} type="submit">Search</button>
-      </form>
-      <div
-        data-testid="results-container"
-        className={`${styles.resultsWrapper}${(isSearching || cards === null) ? ` ${styles.resultsHidden}` : ''}`}
-      >
-        {cards !== null && (
-          cards.length === 0 ? (
-            <p className={styles.empty}>No cards found.</p>
-          ) : (
-            <ul className={styles.results}>
-              {cards.map(card => (
-                <li key={card.id} className={styles.card}>
-                  <img src={card.imageUrl} alt={card.name} className={styles.cardImage} />
-                  <p className={styles.cardName}>{card.name}</p>
-                  <p className={styles.cardSet}>{card.set}</p>
-                  {(isPricesLoading || prices?.[card.id]) && (
-                    <div className={styles.priceArea}>
-                      <div
-                        data-testid="prices-loading-indicator"
-                        className={`${styles.pricesPokeballWrapper}${prices?.[card.id] ? ` ${styles.pricesPokeballHidden}` : ''}`}
-                      >
-                        <svg
-                          className={styles.pricesPokeballSpinner}
-                          viewBox="0 0 100 100"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <circle cx="50" cy="50" r="48" fill="#e0e0e0" stroke="#9e9e9e" strokeWidth="4"/>
-                          <path d="M 2 50 A 48 48 0 0 1 98 50 Z" fill="#9e9e9e"/>
-                          <rect x="2" y="47" width="96" height="6" fill="#757575"/>
-                          <circle cx="50" cy="50" r="13" fill="#757575"/>
-                          <circle cx="50" cy="50" r="8" fill="#e0e0e0"/>
-                        </svg>
-                      </div>
-                      <dl className={`${styles.prices}${!prices?.[card.id] ? ` ${styles.pricesHidden}` : ''}`}>
-                        {prices?.[card.id] && (
-                          <>
-                            <div className={styles.priceRow}>
-                              <dt className={styles.priceLabel}>Avg</dt>
-                              <dd className={styles.priceValue}>{formatPrice(prices[card.id].average)}</dd>
-                            </div>
-                            <div className={styles.priceRow}>
-                              <dt className={styles.priceLabel}>P10</dt>
-                              <dd className={styles.priceValue}>{formatPrice(prices[card.id].p10)}</dd>
-                            </div>
-                            <div className={styles.priceRow}>
-                              <dt className={styles.priceLabel}>P50</dt>
-                              <dd className={styles.priceValue}>{formatPrice(prices[card.id].p50)}</dd>
-                            </div>
-                            <div className={styles.priceRow}>
-                              <dt className={styles.priceLabel}>P90</dt>
-                              <dd className={styles.priceValue}>{formatPrice(prices[card.id].p90)}</dd>
-                            </div>
-                            <div className={styles.priceRow}>
-                              <dt className={styles.priceLabel}>P99</dt>
-                              <dd className={styles.priceValue}>{formatPrice(prices[card.id].p99)}</dd>
-                            </div>
-                          </>
-                        )}
-                      </dl>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-        {cards !== null && (cards.length >= 20 || page > 1) && (
-          <div data-testid="pagination-bar" className={styles.pagination}>
-            <button
-              className={styles.button}
-              onClick={goToPreviousPage}
-              disabled={page === 1}
-              aria-label="Previous page"
-            >
-              Previous
-            </button>
-            <span data-testid="current-page" className={styles.pageIndicator}>Page {page}</span>
-            {cards.length >= 20 && (
-              <button
-                className={styles.button}
-                onClick={goToNextPage}
-                aria-label="Next page"
-              >
-                Next
-              </button>
+
+      <div className={styles.tabs}>
+        <button
+          type="button"
+          className={`${styles.tabButton}${activeTab === 'name' ? ` ${styles.activeTab}` : ''}`}
+          onClick={() => setActiveTab('name')}
+        >
+          By Name
+        </button>
+        <button
+          type="button"
+          className={`${styles.tabButton}${activeTab === 'set' ? ` ${styles.activeTab}` : ''}`}
+          onClick={() => setActiveTab('set')}
+        >
+          By Set
+        </button>
+      </div>
+
+      {activeTab === 'name' && (
+        <>
+          <form
+            data-testid="search-form"
+            className={`${styles.form}${nameSearching ? ` ${styles.formHidden}` : ''}`}
+            onSubmit={searchByName}
+          >
+            <input
+              className={styles.input}
+              placeholder="Pokémon name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
+            <input
+              className={styles.input}
+              placeholder="Set name"
+              value={set}
+              onChange={e => setSet(e.target.value)}
+            />
+            <button className={styles.button} type="submit" disabled={!name}>Search</button>
+          </form>
+          <div
+            data-testid="results-container"
+            className={`${styles.resultsWrapper}${(nameSearching || nameCards === null) ? ` ${styles.resultsHidden}` : ''}`}
+          >
+            {nameCards !== null && (
+              <CardList cards={nameCards} prices={namePrices} isPricesLoading={namePricesLoading} />
+            )}
+            {nameCards !== null && (nameCards.length >= 20 || page > 1) && (
+              <div data-testid="pagination-bar" className={styles.pagination}>
+                <button
+                  className={styles.button}
+                  onClick={goToPreviousPage}
+                  disabled={page === 1}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </button>
+                <span data-testid="current-page" className={styles.pageIndicator}>Page {page}</span>
+                {nameCards.length >= 20 && (
+                  <button
+                    className={styles.button}
+                    onClick={goToNextPage}
+                    aria-label="Next page"
+                  >
+                    Next
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {activeTab === 'set' && (
+        <>
+          <form
+            data-testid="set-search-form"
+            className={`${styles.form}${browseSearching ? ` ${styles.formHidden}` : ''}`}
+            onSubmit={searchBySet}
+          >
+            <input
+              className={styles.input}
+              placeholder="Set name"
+              value={browseSet}
+              onChange={e => setBrowseSet(e.target.value)}
+            />
+            <button className={styles.button} type="submit" disabled={!browseSet}>Search</button>
+          </form>
+          <div
+            data-testid="set-results-container"
+            className={`${styles.resultsWrapper}${(browseSearching || browseCards === null) ? ` ${styles.resultsHidden}` : ''}`}
+          >
+            {browseCards !== null && (
+              <CardList cards={browseCards} prices={browsePrices} isPricesLoading={browsePricesLoading} />
+            )}
+          </div>
+        </>
+      )}
     </main>
   )
 }
