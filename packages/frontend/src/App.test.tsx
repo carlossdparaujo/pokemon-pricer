@@ -24,6 +24,17 @@ test('renders Pokémon Pricer heading', () => {
   expect(screen.getByRole('heading', { name: /Pokémon Pricer/i })).toBeInTheDocument()
 })
 
+test('scrolls to top when a search is submitted', () => {
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
 test('search submits name and set as query params to the BFF', () => {
   const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
   vi.stubGlobal('fetch', fetchMock)

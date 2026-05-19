@@ -41,6 +41,7 @@ export default function App() {
 
   function search(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     const newPage = 1
     setPage(newPage)
     fetchPage(name, set, newPage)
