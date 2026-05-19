@@ -12,6 +12,15 @@ const stubPriceSummary = (cardId: string) => ({
   p99: 6.5,
 })
 
+const makeCards = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `base1-${i}`,
+    name: 'Pikachu',
+    set: 'Base Set',
+    imageUrl: 'https://img/pikachu.png',
+    priceSummary: stubPriceSummary(`base1-${i}`),
+  }))
+
 function stubFetch(cards: object[]) {
   vi.stubGlobal(
     'fetch',
@@ -167,7 +176,7 @@ test('renders priceSummary values formatted as dollars', async () => {
 })
 
 test('scrolls to top when navigating to the next page', async () => {
-  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const body = JSON.stringify({ cards: makeCards(20) })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
   const scrollTo = vi.fn()
@@ -185,7 +194,7 @@ test('scrolls to top when navigating to the next page', async () => {
 })
 
 test('scrolls to top when navigating to the previous page', async () => {
-  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const body = JSON.stringify({ cards: makeCards(20) })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
   const scrollTo = vi.fn()
@@ -206,7 +215,7 @@ test('scrolls to top when navigating to the previous page', async () => {
 })
 
 test('page resets to 1 when a new search starts', async () => {
-  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const body = JSON.stringify({ cards: makeCards(20) })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 
@@ -226,7 +235,7 @@ test('page resets to 1 when a new search starts', async () => {
 })
 
 test('Previous button is disabled on page 1', async () => {
-  stubFetch([{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }])
+  stubFetch(makeCards(20))
 
   render(<App />)
   fireEvent.submit(screen.getByTestId('search-form'))
@@ -236,8 +245,18 @@ test('Previous button is disabled on page 1', async () => {
   expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled()
 })
 
+test('pagination bar is hidden when fewer than 20 cards are returned', async () => {
+  stubFetch(makeCards(19))
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(19))
+  expect(screen.queryByTestId('pagination-bar')).not.toBeInTheDocument()
+})
+
 test('clicking Next increments page and re-fetches with new page number', async () => {
-  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const body = JSON.stringify({ cards: makeCards(20) })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 
@@ -254,7 +273,7 @@ test('clicking Next increments page and re-fetches with new page number', async 
 })
 
 test('clicking Previous decrements page and re-fetches with new page number', async () => {
-  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const body = JSON.stringify({ cards: makeCards(20) })
   const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 

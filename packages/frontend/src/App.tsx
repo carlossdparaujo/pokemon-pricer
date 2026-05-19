@@ -139,7 +139,7 @@ export default function App() {
             </ul>
           )
         )}
-        {cards !== null && cards.length > 0 && (
+        {cards !== null && (cards.length >= 20 || page > 1) && (
           <div data-testid="pagination-bar" className={styles.pagination}>
             <button
               className={styles.button}
@@ -150,13 +150,15 @@ export default function App() {
               Previous
             </button>
             <span data-testid="current-page" className={styles.pageIndicator}>Page {page}</span>
-            <button
-              className={styles.button}
-              onClick={goToNextPage}
-              aria-label="Next page"
-            >
-              Next
-            </button>
+            {cards.length >= 20 && (
+              <button
+                className={styles.button}
+                onClick={goToNextPage}
+                aria-label="Next page"
+              >
+                Next
+              </button>
+            )}
           </div>
         )}
       </div>
