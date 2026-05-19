@@ -28,7 +28,7 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
     }
 
     private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
-        findSetsMatching(setFilter, page, numberOfItems).flatMap { set -> fetchCardsInSet(set, nameFilter, page, numberOfItems) }
+        findSetsMatching(setFilter).flatMap { set -> fetchCardsInSet(set, nameFilter, page, numberOfItems) }
 
     private suspend fun fetchByNameFilter(nameFilter: String?, page: Int, numberOfItems: Int): List<Card> {
         val cards = fetchCardsBriefByName(nameFilter, page, numberOfItems)
@@ -36,10 +36,9 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
         return cards.map { toCard(it, setNames) }
     }
 
-    private suspend fun findSetsMatching(setFilter: String, page: Int, numberOfItems: Int): List<TcgDexSetBrief> =
+    private suspend fun findSetsMatching(setFilter: String): List<TcgDexSetBrief> =
         client.get("$BASE_URL/sets") {
             parameter("name", setFilter)
-            paginationParams(page, numberOfItems)
         }.body()
 
     private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
