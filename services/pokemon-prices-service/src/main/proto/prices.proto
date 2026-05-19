@@ -1,0 +1,31 @@
+syntax = "proto3";
+package pokemonpricer.prices;
+option java_package = "com.pokemonpricer.pokemonpricesservice.grpc";
+option java_multiple_files = true;
+
+service PokemonPricesService {
+  rpc GetPricesBatch (GetPricesBatchRequest) returns (GetPricesBatchResponse);
+}
+
+message CardPriceRequest {
+  string card_id = 1;
+  string name = 2;
+  string set = 3;
+}
+
+message PriceSummary {
+  string card_id = 1;
+  double average = 2;
+  double p10 = 3;
+  double p50 = 4;
+  double p90 = 5;
+  double p99 = 6;
+}
+
+message GetPricesBatchRequest {
+  repeated CardPriceRequest cards = 1;
+}
+
+message GetPricesBatchResponse {
+  map<string, PriceSummary> prices = 1;
+}
