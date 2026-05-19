@@ -167,9 +167,8 @@ test('renders priceSummary values formatted as dollars', async () => {
 })
 
 test('page resets to 1 when a new search starts', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
-  )
+  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
@@ -199,9 +198,8 @@ test('Previous button is disabled on page 1', async () => {
 })
 
 test('clicking Next increments page and re-fetches with new page number', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
-  )
+  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
@@ -217,9 +215,8 @@ test('clicking Next increments page and re-fetches with new page number', async 
 })
 
 test('clicking Previous decrements page and re-fetches with new page number', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
-  )
+  const body = JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
