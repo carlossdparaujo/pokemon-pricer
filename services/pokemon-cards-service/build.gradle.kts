@@ -20,6 +20,9 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
 
+    // TCGDex SDK
+    implementation("net.tcgdex:sdk:2.0.3")
+
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.13")
 

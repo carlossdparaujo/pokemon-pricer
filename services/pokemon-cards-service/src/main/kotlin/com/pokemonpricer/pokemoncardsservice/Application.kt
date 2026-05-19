@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import net.tcgdex.sdk.TCGdex
 
 @Serializable
 data class Card(
@@ -21,39 +22,39 @@ data class Card(
 @Serializable
 data class CardsResponse(val cards: List<Card>)
 
-val stubCards = listOf(
-    Card(
-        id = "base1-4",
-        name = "Charizard",
-        set = "Base Set",
-        imageUrl = "https://images.pokemontcg.io/base1/4.png",
-    ),
-    Card(
-        id = "base1-25",
-        name = "Dewgong",
-        set = "Base Set",
-        imageUrl = "https://images.pokemontcg.io/base1/25.png",
-    ),
-    Card(
-        id = "neo1-16",
-        name = "Togetic",
-        set = "Neo Genesis",
-        imageUrl = "https://images.pokemontcg.io/neo1/16.png",
-    ),
-)
+// Inject for testability
+typealias CardsFetcher = (nameFilter: String?, setFilter: String?) -> List<Card>
 
-fun Application.configureRouting() {
+fun buildCardsFetcher(): CardsFetcher = { nameFilter, setFilter ->
+    val api = TCGdex("en")
+    val resumes = api.fetchCards() ?: emptyArray()
+
+    // Filter by name in-memory first (cheap)
+    val nameMatched = resumes.filter { card ->
+        nameFilter == null || card.name.lowercase().contains(nameFilter)
+    }
+
+    // For each name-matched card, fetch full card to get set name (needed for set filter + response)
+    nameMatched.mapNotNull { resume ->
+        api.fetchCard(resume.id)
+    }.filter { card ->
+        setFilter == null || card.set.name.lowercase().contains(setFilter)
+    }.map { card ->
+        Card(
+            id = card.id,
+            name = card.name,
+            set = card.set.name,
+            imageUrl = card.image?.let { "$it/high.webp" } ?: "",
+        )
+    }
+}
+
+fun Application.configureRouting(fetchCards: CardsFetcher = buildCardsFetcher()) {
     routing {
         get("/cards") {
             val nameFilter = call.request.queryParameters["name"]?.lowercase()
             val setFilter = call.request.queryParameters["set"]?.lowercase()
-
-            val filtered = stubCards.filter { card ->
-                (nameFilter == null || card.name.lowercase().contains(nameFilter)) &&
-                (setFilter == null || card.set.lowercase().contains(setFilter))
-            }
-
-            call.respond(CardsResponse(cards = filtered))
+            call.respond(CardsResponse(cards = fetchCards(nameFilter, setFilter)))
         }
     }
 }
