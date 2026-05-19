@@ -8,18 +8,18 @@ service PokemonPricesService {
 }
 
 message CardPriceRequest {
-  string card_id = 1;
-  string name = 2;
-  string set = 3;
+  optional string card_id = 1;
+  optional string name = 2;
+  optional string set = 3;
 }
 
 message PriceSummary {
-  string card_id = 1;
-  double average = 2;
-  double p10 = 3;
-  double p50 = 4;
-  double p90 = 5;
-  double p99 = 6;
+  optional string card_id = 1;
+  optional double average = 2;
+  optional double p10 = 3;
+  optional double p50 = 4;
+  optional double p90 = 5;
+  optional double p99 = 6;
 }
 
 message GetPricesBatchRequest {

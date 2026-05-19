@@ -8,17 +8,17 @@ service PokemonCardsService {
 }
 
 message GetCardsRequest {
-  string name = 1;
-  string set = 2;
-  int32 page = 3;
-  int32 number_of_items = 4;
+  optional string name = 1;
+  optional string set = 2;
+  optional int32 page = 3;
+  optional int32 number_of_items = 4;
 }
 
 message Card {
-  string id = 1;
-  string name = 2;
-  string set = 3;
-  string image_url = 4;
+  optional string id = 1;
+  optional string name = 2;
+  optional string set = 3;
+  optional string image_url = 4;
 }
 
 message GetCardsResponse {
