@@ -73,7 +73,7 @@ export default function App() {
         />
         <button className={styles.button} type="submit">Search</button>
       </form>
-      {cards !== null && (
+      {!isSearching && cards !== null && (
         cards.length === 0 ? (
           <p className={styles.empty}>No cards found.</p>
         ) : (

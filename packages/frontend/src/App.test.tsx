@@ -88,6 +88,21 @@ test('form fades out while search is in progress', () => {
   expect(form.className).toMatch(/formHidden/)
 })
 
+test('hides previous results when a new search starts', async () => {
+  stubFetch([
+    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') },
+  ])
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByText('Pikachu')).toBeInTheDocument())
+
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  expect(screen.queryByText('Pikachu')).not.toBeInTheDocument()
+})
+
 test('form fades back in after search completes', async () => {
   stubFetch([])
 
