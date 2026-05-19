@@ -27,6 +27,7 @@
 
 .spinning {
   animation: spin 0.9s linear infinite, bounce 0.7s ease-in-out infinite;
+  filter: none;
 }
 
 .title {
@@ -44,12 +45,13 @@
   width: 100%;
   max-width: 360px;
   opacity: 1;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .formHidden {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
 .input {
@@ -93,12 +95,13 @@
 }
 
 .resultsWrapper {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .resultsHidden {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
 .results {
