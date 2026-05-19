@@ -44,7 +44,7 @@ export default function App() {
       <div data-testid="pokeball-wrapper" className={isSearching ? styles.bouncing : undefined}>
         <svg
           data-testid="pokeball"
-          className={`${styles.pokeball}${isSearching ? ` ${styles.spinning}` : ` ${styles.pokeballShadow}`}`}
+          className={`${styles.pokeball}${isSearching ? ` ${styles.spinning}` : ''}`}
           viewBox="0 0 100 100"
           xmlns="http://www.w3.org/2000/svg"
         >

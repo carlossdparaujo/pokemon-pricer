@@ -71,13 +71,11 @@ test('pokeball gains spinning class and wrapper gains bouncing class while searc
   const pokeball = screen.getByTestId('pokeball')
   const wrapper = screen.getByTestId('pokeball-wrapper')
   expect(pokeball.className).not.toMatch(/spinning/)
-  expect(pokeball.className).toMatch(/pokeballShadow/)
   expect(wrapper.className).not.toMatch(/bouncing/)
 
   fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
 
   expect(pokeball.className).toMatch(/spinning/)
-  expect(pokeball.className).not.toMatch(/pokeballShadow/)
   expect(wrapper.className).toMatch(/bouncing/)
 })
 
