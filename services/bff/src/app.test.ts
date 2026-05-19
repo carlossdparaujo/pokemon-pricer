@@ -101,4 +101,40 @@ describe('GET /api/pokemon-cards', () => {
     expect(res.status).toBe(500)
     expect(await res.json()).toEqual({ error: 'Failed to fetch cards' })
   })
+
+  it('forwards page param to upstream', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ cards: [] }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await app.fetch(new Request('http://localhost/api/pokemon-cards?page=3'))
+
+    const upstreamUrl = new URL(fetchMock.mock.calls[0][0] as string)
+    expect(upstreamUrl.searchParams.get('page')).toBe('3')
+  })
+
+  it('defaults page to 1 when not provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ cards: [] }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await app.fetch(new Request('http://localhost/api/pokemon-cards'))
+
+    const upstreamUrl = new URL(fetchMock.mock.calls[0][0] as string)
+    expect(upstreamUrl.searchParams.get('page')).toBe('1')
+  })
+
+  it('always sends numberOfItems=20 to upstream regardless of request', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ cards: [] }), { status: 200 })
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await app.fetch(new Request('http://localhost/api/pokemon-cards?page=5'))
+
+    const upstreamUrl = new URL(fetchMock.mock.calls[0][0] as string)
+    expect(upstreamUrl.searchParams.get('numberOfItems')).toBe('20')
+  })
 })

@@ -37,7 +37,7 @@ class ApplicationTest {
 
     @Test
     fun `returns cards matching name filter`() = testApp(
-        fetcher = { nameFilter, _ ->
+        fetcher = { nameFilter, _, _, _ ->
             listOf(card("base1-4", "Charizard"), card("base1-25", "Pikachu"))
                 .filter { nameFilter == null || it.name.lowercase().contains(nameFilter) }
         }
@@ -52,7 +52,7 @@ class ApplicationTest {
 
     @Test
     fun `returns all cards when no filter given`() = testApp(
-        fetcher = { _, _ -> listOf(card("base1-4", "Charizard"), card("base1-25", "Pikachu")) }
+        fetcher = { _, _, _, _ -> listOf(card("base1-4", "Charizard"), card("base1-25", "Pikachu")) }
     ) {
         val client = createClient { install(ContentNegotiation) { json() } }
         val res = client.get("/cards")
@@ -62,7 +62,7 @@ class ApplicationTest {
 
     @Test
     fun `returns empty list when no cards match`() = testApp(
-        fetcher = { _, _ -> emptyList() }
+        fetcher = { _, _, _, _ -> emptyList() }
     ) {
         val client = createClient { install(ContentNegotiation) { json() } }
         val res = client.get("/cards?name=mewtwo")
@@ -72,7 +72,7 @@ class ApplicationTest {
 
     @Test
     fun `set filter is passed through to fetcher`() = testApp(
-        fetcher = { _, setFilter ->
+        fetcher = { _, setFilter, _, _ ->
             listOf(card("base1-4", "Charizard"), card("neo1-16", "Togetic", "Neo Genesis"))
                 .filter { setFilter == null || it.set.lowercase().contains(setFilter) }
         }
@@ -87,7 +87,7 @@ class ApplicationTest {
 
     @Test
     fun `returns all cards provided by fetcher up to page size`() = testApp(
-        fetcher = { _, _ -> (1..20).map { i -> card("set1-$i", "Card $i", "Set One") } }
+        fetcher = { _, _, _, _ -> (1..20).map { i -> card("set1-$i", "Card $i", "Set One") } }
     ) {
         val client = createClient { install(ContentNegotiation) { json() } }
         val res = client.get("/cards")
@@ -97,7 +97,7 @@ class ApplicationTest {
 
     @Test
     fun `response card shape has expected fields`() = testApp(
-        fetcher = { _, _ -> listOf(card("base1-4", "Charizard")) }
+        fetcher = { _, _, _, _ -> listOf(card("base1-4", "Charizard")) }
     ) {
         val client = createClient { install(ContentNegotiation) { json() } }
         val res = client.get("/cards?name=charizard")
@@ -113,7 +113,7 @@ class ApplicationTest {
 
     @Test
     fun `response card has priceSummary with all required fields`() = testApp(
-        fetcher = { _, _ ->
+        fetcher = { _, _, _, _ ->
             listOf(
                 Card(
                     id = "base1-4", name = "Charizard", set = "Base Set",
@@ -139,7 +139,7 @@ class ApplicationTest {
 
     @Test
     fun `all returned cards have priceSummary`() = testApp(
-        fetcher = { _, _ ->
+        fetcher = { _, _, _, _ ->
             listOf(
                 Card("base1-4", "Charizard", "Base Set", "https://img/c.png", PriceSummary("base1-4", 350.0, 200.0, 330.0, 500.0, 750.0)),
                 Card("base1-25", "Dewgong", "Base Set", "https://img/d.png", PriceSummary("base1-25", 2.5, 1.0, 2.25, 4.0, 6.5)),
@@ -159,7 +159,7 @@ class ApplicationTest {
     fun `fetched price summary is included in card response`() {
         val specificPrices = PriceSummary(cardId = "base1-4", average = 99.0, p10 = 50.0, p50 = 95.0, p90 = 150.0, p99 = 300.0)
         val customPricesFetcher: PricesFetcher = { _ -> specificPrices }
-        val fetcherUsingPrices: CardsFetcher = { _, _ ->
+        val fetcherUsingPrices: CardsFetcher = { _, _, _, _ ->
             listOf(Card(id = "base1-4", name = "Charizard", set = "Base Set", imageUrl = "https://img/c.png", priceSummary = customPricesFetcher("base1-4")))
         }
         testApp(
@@ -178,6 +178,66 @@ class ApplicationTest {
             assertEquals(95.0, priceSummary.p50)
             assertEquals(150.0, priceSummary.p90)
             assertEquals(300.0, priceSummary.p99)
+        }
+    }
+
+    @Test
+    fun `page param is forwarded to fetcher`() {
+        var capturedPage = 0
+        testApp(
+            fetcher = { _, _, page, _ ->
+                capturedPage = page
+                emptyList()
+            }
+        ) {
+            val client = createClient { install(ContentNegotiation) { json() } }
+            client.get("/cards?page=3")
+            assertEquals(3, capturedPage)
+        }
+    }
+
+    @Test
+    fun `numberOfItems param is forwarded to fetcher`() {
+        var capturedNumberOfItems = 0
+        testApp(
+            fetcher = { _, _, _, numberOfItems ->
+                capturedNumberOfItems = numberOfItems
+                emptyList()
+            }
+        ) {
+            val client = createClient { install(ContentNegotiation) { json() } }
+            client.get("/cards?numberOfItems=50")
+            assertEquals(50, capturedNumberOfItems)
+        }
+    }
+
+    @Test
+    fun `page defaults to 1 when not provided`() {
+        var capturedPage = 0
+        testApp(
+            fetcher = { _, _, page, _ ->
+                capturedPage = page
+                emptyList()
+            }
+        ) {
+            val client = createClient { install(ContentNegotiation) { json() } }
+            client.get("/cards")
+            assertEquals(1, capturedPage)
+        }
+    }
+
+    @Test
+    fun `numberOfItems defaults to 20 when not provided`() {
+        var capturedNumberOfItems = 0
+        testApp(
+            fetcher = { _, _, _, numberOfItems ->
+                capturedNumberOfItems = numberOfItems
+                emptyList()
+            }
+        ) {
+            val client = createClient { install(ContentNegotiation) { json() } }
+            client.get("/cards")
+            assertEquals(20, capturedNumberOfItems)
         }
     }
 }
