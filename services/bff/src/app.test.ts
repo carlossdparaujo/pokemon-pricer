@@ -9,13 +9,13 @@ afterEach(() => {
 
 function makeCardsClient(cards: Card[] = []): CardsClient {
   return {
-    getCards: vi.fn().mockResolvedValue(cards),
+    getCards: vi.fn().mockResolvedValue({ cards }),
   }
 }
 
 function makePricesClient(prices: Record<string, PriceSummary> = {}): PricesClient {
   return {
-    getPricesBatch: vi.fn().mockResolvedValue(prices),
+    getPricesBatch: vi.fn().mockResolvedValue({ prices }),
   }
 }
 
@@ -116,7 +116,7 @@ describe('POST /api/pokemon-prices', () => {
       })
     )
 
-    expect(mockPricesClient.getPricesBatch).toHaveBeenCalledWith(payload)
+    expect(mockPricesClient.getPricesBatch).toHaveBeenCalledWith({ cards: payload })
   })
 
   it('returns 500 when prices client throws', async () => {

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { CardsClient, createGrpcCardsClient } from './cards-client.js'
-import { PricesClient, createGrpcPricesClient } from './prices-client.js'
+import { CardsClient, createCardsClient } from './cards-client.js'
+import { PricesClient, createPricesClient } from './prices-client.js'
 
 const POKEMON_CARDS_SERVICE_GRPC_ADDRESS =
   process.env.POKEMON_CARDS_SERVICE_GRPC_ADDRESS ?? 'localhost:9090'
@@ -19,7 +19,7 @@ export function createApp(cardsClient: CardsClient, pricesClient: PricesClient):
     const page = Number(c.req.query('page') ?? '1')
 
     try {
-      const cards = await cardsClient.getCards({ name, set, page, numberOfItems: 20 })
+      const { cards } = await cardsClient.getCards({ name, set, page, numberOfItems: 20 })
       return c.json({ cards })
     } catch {
       return c.json({ error: 'Failed to fetch cards' }, 500)
@@ -29,7 +29,7 @@ export function createApp(cardsClient: CardsClient, pricesClient: PricesClient):
   app.post('/api/pokemon-prices', async (c) => {
     try {
       const body = await c.req.json()
-      const prices = await pricesClient.getPricesBatch(body)
+      const { prices } = await pricesClient.getPricesBatch({ cards: body })
       return c.json(prices)
     } catch {
       return c.json({ error: 'Failed to fetch prices' }, 500)
@@ -40,6 +40,6 @@ export function createApp(cardsClient: CardsClient, pricesClient: PricesClient):
 }
 
 export default createApp(
-  createGrpcCardsClient(POKEMON_CARDS_SERVICE_GRPC_ADDRESS),
-  createGrpcPricesClient(POKEMON_PRICES_SERVICE_GRPC_ADDRESS)
+  createCardsClient(POKEMON_CARDS_SERVICE_GRPC_ADDRESS),
+  createPricesClient(POKEMON_PRICES_SERVICE_GRPC_ADDRESS)
 )
