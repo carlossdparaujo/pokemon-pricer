@@ -49,6 +49,8 @@ class TcgDexCardsFetcher {
             if (nameFilter != null) parameter("name", nameFilter)
         }.body()
 
+    // The /cards endpoint returns no set info — only the card ID encodes the set (e.g. "base1-4" → set "base1").
+    // We batch-fetch each unique set to get the display name (e.g. "Base Set") instead of exposing the raw ID.
     private suspend fun resolveSetNames(cards: List<TcgDexCardBrief>): Map<String, String> =
         cards.map { setIdFromCardId(it.id) }.distinct().associateWith { setId ->
             runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
