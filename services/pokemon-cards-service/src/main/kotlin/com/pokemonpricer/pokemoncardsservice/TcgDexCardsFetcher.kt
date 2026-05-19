@@ -2,32 +2,44 @@ package com.pokemonpricer.pokemoncardsservice
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlin.collections.map
+import org.slf4j.LoggerFactory
 
 @Serializable
 private data class TcgDexCardBrief(val id: String, val name: String, val image: String? = null)
 
 @Serializable
-private data class TcgDexSetBrief(val id: String, val name: String)
+private data class TcgDexSetSerie(val id: String, val name: String)
 
-class TcgDexCardsFetcher {
+@Serializable
+private data class TcgDexSetBrief(val serie: TcgDexSetSerie, val name: String, val cards: List<TcgDexCardBrief>)
 
-    private val client = HttpClient(CIO) {
+class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
+
+    private val logger = LoggerFactory.getLogger(TcgDexCardsFetcher::class.java)
+
+    private val client = HttpClient(engine) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
 
     fun build(): CardsFetcher = { nameFilter, setFilter, page, numberOfItems ->
-        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter, page, numberOfItems)
+        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter)
         else fetchByNameFilter(nameFilter, page, numberOfItems)
     }
 
-    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
-        findSetsMatching(setFilter, page, numberOfItems).flatMap { set -> fetchCardsInSet(set, nameFilter, page, numberOfItems) }
+    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?): List<Card> {
+        val setsMatching = findSetsMatching(setFilter.replace(" ", "+"))
+        return setsMatching.cards
+            .filter { it.name.lowercase().contains(nameFilter ?: "") }
+            .map { card -> Card(id = card.id, name = card.name, set = setsMatching.name, imageUrl = imageUrl(card.image)) }
+    }
 
     private suspend fun fetchByNameFilter(nameFilter: String?, page: Int, numberOfItems: Int): List<Card> {
         val cards = fetchCardsBriefByName(nameFilter, page, numberOfItems)
@@ -35,18 +47,8 @@ class TcgDexCardsFetcher {
         return cards.map { toCard(it, setNames) }
     }
 
-    private suspend fun findSetsMatching(setFilter: String, page: Int, numberOfItems: Int): List<TcgDexSetBrief> =
-        client.get("$BASE_URL/sets") {
-            parameter("name", setFilter)
-            paginationParams(page, numberOfItems)
-        }.body()
-
-    private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
-        client.get("$BASE_URL/sets/${set.id}/cards") {
-            if (nameFilter != null) parameter("name", nameFilter)
-            paginationParams(page, numberOfItems)
-        }.body<List<TcgDexCardBrief>>()
-            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image)) }
+    private suspend fun findSetsMatching(setFilter: String): TcgDexSetBrief =
+        client.get("$BASE_URL/sets/$setFilter").body()
 
     private suspend fun fetchCardsBriefByName(nameFilter: String?, page: Int, numberOfItems: Int): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
@@ -63,7 +65,10 @@ class TcgDexCardsFetcher {
     // We batch-fetch each unique set to get the display name (e.g. "Base Set") instead of exposing the raw ID.
     private suspend fun resolveSetNames(cards: List<TcgDexCardBrief>): Map<String, String> =
         cards.map { setIdFromCardId(it.id) }.distinct().associateWith { setId ->
-            runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
+            runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { e ->
+                logger.error("Failed to fetch set name for '{}': {}", setId, e.message, e)
+                setId
+            }
         }
 
     private fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {

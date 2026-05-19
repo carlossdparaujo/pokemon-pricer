@@ -38,6 +38,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation("io.grpc:grpc-inprocess:$grpcVersion")
     testImplementation("io.grpc:grpc-testing:$grpcVersion")
+    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
 }
 
 protobuf {
