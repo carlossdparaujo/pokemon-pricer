@@ -2,6 +2,7 @@ package com.pokemonpricer.pokemoncardsservice
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.*
@@ -15,9 +16,9 @@ private data class TcgDexCardBrief(val id: String, val name: String, val image: 
 @Serializable
 private data class TcgDexSetBrief(val id: String, val name: String)
 
-class TcgDexCardsFetcher {
+class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
 
-    private val client = HttpClient(CIO) {
+    private val client = HttpClient(engine) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
 
