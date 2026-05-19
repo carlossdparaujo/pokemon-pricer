@@ -49,7 +49,7 @@ val stubCards = listOf(
     ),
     Card(
         id = "base1-25",
-        name = "Pikachu",
+        name = "Dewgong",
         set = "Base Set",
         imageUrl = "https://images.pokemontcg.io/base1/25.png",
         priceSummary = PriceSummary(
@@ -63,7 +63,7 @@ val stubCards = listOf(
     ),
     Card(
         id = "neo1-16",
-        name = "Pikachu",
+        name = "Togetic",
         set = "Neo Genesis",
         imageUrl = "https://images.pokemontcg.io/neo1/16.png",
         priceSummary = PriceSummary(
