@@ -13,88 +13,95 @@ import kotlin.test.assertTrue
 
 class ApplicationTest {
 
-    private fun testApp(block: suspend ApplicationTestBuilder.() -> Unit) = testApplication {
-        application {
-            configureSerialization()
-            configureRouting()
+    private fun testApp(fetcher: CardsFetcher, block: suspend ApplicationTestBuilder.() -> Unit) =
+        testApplication {
+            application {
+                configureSerialization()
+                configureRouting(fetcher)
+            }
+            block()
         }
-        block()
-    }
 
-    private fun ApplicationTestBuilder.jsonClient() = createClient {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+    @Test
+    fun `returns cards matching name filter`() = testApp(
+        fetcher = { nameFilter, _ ->
+            listOf(
+                Card("base1-4", "Charizard", "Base Set", "https://img/charizard.png"),
+                Card("base1-25", "Pikachu", "Base Set", "https://img/pikachu.png"),
+            ).filter { nameFilter == null || it.name.lowercase().contains(nameFilter) }
         }
-    }
-
-    @Test
-    fun `GET cards with no filters returns all stub cards`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
-        assertEquals(3, body.cards.size)
-    }
-
-    @Test
-    fun `GET cards filtered by name returns matching cards`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards?name=pikachu")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
-        assertEquals(2, body.cards.size)
-        assertTrue(body.cards.all { it.name.lowercase().contains("pikachu") })
-    }
-
-    @Test
-    fun `GET cards filtered by set returns matching cards`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards?set=Base+Set")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
-        assertEquals(2, body.cards.size)
-        assertTrue(body.cards.all { it.set.lowercase().contains("base set") })
-    }
-
-    @Test
-    fun `GET cards filtered by name and set returns intersection`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards?name=pikachu&set=Base+Set")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards?name=pikachu")
+        assertEquals(HttpStatusCode.OK, res.status)
+        val body = res.body<CardsResponse>()
         assertEquals(1, body.cards.size)
-        assertEquals("base1-25", body.cards.first().id)
+        assertEquals("Pikachu", body.cards.first().name)
     }
 
     @Test
-    fun `GET cards with non-matching filter returns empty list`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards?name=mewtwo")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
-        assertTrue(body.cards.isEmpty())
+    fun `returns all cards when no filter given`() = testApp(
+        fetcher = { _, _ ->
+            listOf(
+                Card("base1-4", "Charizard", "Base Set", "https://img/charizard.png"),
+                Card("base1-25", "Pikachu", "Base Set", "https://img/pikachu.png"),
+            )
+        }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards")
+        assertEquals(HttpStatusCode.OK, res.status)
+        assertEquals(2, res.body<CardsResponse>().cards.size)
     }
 
     @Test
-    fun `response card shape has expected fields`() = testApp {
-        val client = jsonClient()
-        val response = client.get("/cards?name=charizard")
+    fun `returns empty list when no cards match`() = testApp(
+        fetcher = { _, _ -> emptyList() }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards?name=mewtwo")
+        assertEquals(HttpStatusCode.OK, res.status)
+        assertTrue(res.body<CardsResponse>().cards.isEmpty())
+    }
 
-        assertEquals(HttpStatusCode.OK, response.status)
-
-        val body = response.body<CardsResponse>()
+    @Test
+    fun `set filter is passed through to fetcher`() = testApp(
+        fetcher = { _, setFilter ->
+            listOf(
+                Card("base1-4", "Charizard", "Base Set", "https://img/charizard.png"),
+                Card("neo1-16", "Togetic", "Neo Genesis", "https://img/togetic.png"),
+            ).filter { setFilter == null || it.set.lowercase().contains(setFilter) }
+        }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards?set=neo+genesis")
+        assertEquals(HttpStatusCode.OK, res.status)
+        val body = res.body<CardsResponse>()
         assertEquals(1, body.cards.size)
+        assertEquals("Togetic", body.cards.first().name)
+    }
 
+    @Test
+    fun `returns all cards provided by fetcher up to page size`() = testApp(
+        fetcher = { _, _ -> (1..20).map { i -> Card("set1-$i", "Card $i", "Set One", "https://img/$i.png") } }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards")
+        assertEquals(HttpStatusCode.OK, res.status)
+        assertEquals(20, res.body<CardsResponse>().cards.size)
+    }
+
+    @Test
+    fun `response card shape has expected fields`() = testApp(
+        fetcher = { _, _ ->
+            listOf(Card("base1-4", "Charizard", "Base Set", "https://img/charizard.png"))
+        }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards?name=charizard")
+        assertEquals(HttpStatusCode.OK, res.status)
+        val body = res.body<CardsResponse>()
+        assertEquals(1, body.cards.size)
         val card = body.cards.first()
         assertEquals("base1-4", card.id)
         assertEquals("Charizard", card.name)
