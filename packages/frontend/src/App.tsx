@@ -2,21 +2,23 @@ import { useState } from 'react'
 import styles from './App.module.css'
 
 interface PokemonCard {
-  name: string | null
-  set: string | null
+  id: string
+  name: string
+  set: string
+  imageUrl: string
 }
 
 export default function App() {
   const [name, setName] = useState('')
   const [set, setSet] = useState('')
-  const [card, setCard] = useState<PokemonCard | null>(null)
+  const [cards, setCards] = useState<PokemonCard[] | null>(null)
 
   function search(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault()
     const params = new URLSearchParams({ name, set })
     fetch(`/api/pokemon-cards?${params}`)
       .then(res => res.json())
-      .then(setCard)
+      .then(data => setCards(data.cards))
   }
 
   return (
@@ -44,11 +46,20 @@ export default function App() {
         />
         <button className={styles.button} type="submit">Search</button>
       </form>
-      {card && (
-        <div className={styles.result}>
-          <p>Name: {card.name ?? '—'}</p>
-          <p>Set: {card.set ?? '—'}</p>
-        </div>
+      {cards !== null && (
+        cards.length === 0 ? (
+          <p className={styles.empty}>No cards found.</p>
+        ) : (
+          <ul className={styles.results}>
+            {cards.map(card => (
+              <li key={card.id} className={styles.card}>
+                <img src={card.imageUrl} alt={card.name} className={styles.cardImage} />
+                <p className={styles.cardName}>{card.name}</p>
+                <p className={styles.cardSet}>{card.set}</p>
+              </li>
+            ))}
+          </ul>
+        )
       )}
     </main>
   )
