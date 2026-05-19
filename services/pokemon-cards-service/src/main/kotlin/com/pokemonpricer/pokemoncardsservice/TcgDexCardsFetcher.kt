@@ -21,42 +21,42 @@ class TcgDexCardsFetcher {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
     }
 
-    fun build(): CardsFetcher = { nameFilter, setFilter ->
-        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter)
-        else fetchByNameFilter(nameFilter)
+    fun build(): CardsFetcher = { nameFilter, setFilter, page, numberOfItems ->
+        if (setFilter != null) fetchBySetFilter(setFilter, nameFilter, page, numberOfItems)
+        else fetchByNameFilter(nameFilter, page, numberOfItems)
     }
 
-    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?): List<Card> =
-        findSetsMatching(setFilter).flatMap { set -> fetchCardsInSet(set, nameFilter) }
+    private suspend fun fetchBySetFilter(setFilter: String, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
+        findSetsMatching(setFilter, page, numberOfItems).flatMap { set -> fetchCardsInSet(set, nameFilter, page, numberOfItems) }
 
-    private suspend fun fetchByNameFilter(nameFilter: String?): List<Card> {
-        val cards = fetchCardsBriefByName(nameFilter)
+    private suspend fun fetchByNameFilter(nameFilter: String?, page: Int, numberOfItems: Int): List<Card> {
+        val cards = fetchCardsBriefByName(nameFilter, page, numberOfItems)
         val setNames = resolveSetNames(cards)
         return cards.map { toCard(it, setNames) }
     }
 
-    private suspend fun findSetsMatching(setFilter: String): List<TcgDexSetBrief> =
+    private suspend fun findSetsMatching(setFilter: String, page: Int, numberOfItems: Int): List<TcgDexSetBrief> =
         client.get("$BASE_URL/sets") {
             parameter("name", setFilter)
-            firstPage()
+            paginationParams(page, numberOfItems)
         }.body()
 
-    private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?): List<Card> =
+    private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?, page: Int, numberOfItems: Int): List<Card> =
         client.get("$BASE_URL/sets/${set.id}/cards") {
             if (nameFilter != null) parameter("name", nameFilter)
-            firstPage()
+            paginationParams(page, numberOfItems)
         }.body<List<TcgDexCardBrief>>()
             .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image), priceSummary = zeroPriceSummary(card.id)) }
 
-    private suspend fun fetchCardsBriefByName(nameFilter: String?): List<TcgDexCardBrief> =
+    private suspend fun fetchCardsBriefByName(nameFilter: String?, page: Int, numberOfItems: Int): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
             if (nameFilter != null) parameter("name", nameFilter)
-            firstPage()
+            paginationParams(page, numberOfItems)
         }.body()
 
-    private fun HttpRequestBuilder.firstPage() {
-        parameter("pagination:page", 1)
-        parameter("pagination:itemsPerPage", PAGE_SIZE)
+    private fun HttpRequestBuilder.paginationParams(page: Int, numberOfItems: Int) {
+        parameter("pagination:page", page)
+        parameter("pagination:itemsPerPage", numberOfItems)
     }
 
     // The /cards endpoint returns no set info — only the card ID encodes the set (e.g. "base1-4" → set "base1").
@@ -79,6 +79,5 @@ class TcgDexCardsFetcher {
 
     companion object {
         private const val BASE_URL = "https://api.tcgdex.net/v2/en"
-        private const val PAGE_SIZE = 20
     }
 }

@@ -27,16 +27,39 @@ export default function App() {
   const [set, setSet] = useState('')
   const [cards, setCards] = useState<PokemonCard[] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [page, setPage] = useState(1)
 
-  function search(e: React.SubmitEvent<HTMLFormElement>) {
-    e.preventDefault()
+  function fetchPage(nameFilter: string, setFilter: string, pageNumber: number) {
     if (isSearching) return
     setIsSearching(true)
-    const params = new URLSearchParams({ name, set })
+    setCards(null)
+    const params = new URLSearchParams({ name: nameFilter, set: setFilter, page: String(pageNumber) })
     fetch(`/api/pokemon-cards?${params}`)
       .then(res => res.json())
       .then(data => setCards(data.cards))
       .finally(() => setIsSearching(false))
+  }
+
+  function search(e: React.SubmitEvent<HTMLFormElement>) {
+    e.preventDefault()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const newPage = 1
+    setPage(newPage)
+    fetchPage(name, set, newPage)
+  }
+
+  function goToPreviousPage() {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const newPage = page - 1
+    setPage(newPage)
+    fetchPage(name, set, newPage)
+  }
+
+  function goToNextPage() {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    const newPage = page + 1
+    setPage(newPage)
+    fetchPage(name, set, newPage)
   }
 
   return (
@@ -115,6 +138,28 @@ export default function App() {
               ))}
             </ul>
           )
+        )}
+        {cards !== null && (cards.length >= 20 || page > 1) && (
+          <div data-testid="pagination-bar" className={styles.pagination}>
+            <button
+              className={styles.button}
+              onClick={goToPreviousPage}
+              disabled={page === 1}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+            <span data-testid="current-page" className={styles.pageIndicator}>Page {page}</span>
+            {cards.length >= 20 && (
+              <button
+                className={styles.button}
+                onClick={goToNextPage}
+                aria-label="Next page"
+              >
+                Next
+              </button>
+            )}
+          </div>
         )}
       </div>
     </main>

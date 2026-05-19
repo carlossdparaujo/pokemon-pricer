@@ -32,14 +32,16 @@ data class Card(
 @Serializable
 data class CardsResponse(val cards: List<Card>)
 
-typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?) -> List<Card>
+typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?, page: Int, numberOfItems: Int) -> List<Card>
 
 fun Application.configureRouting(fetchCards: CardsFetcher = TcgDexCardsFetcher().build()) {
     routing {
         get("/cards") {
             val nameFilter = call.request.queryParameters["name"]?.lowercase()
             val setFilter = call.request.queryParameters["set"]?.lowercase()
-            call.respond(CardsResponse(cards = fetchCards(nameFilter, setFilter)))
+            val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
+            val numberOfItems = call.request.queryParameters["numberOfItems"]?.toIntOrNull() ?: 20
+            call.respond(CardsResponse(cards = fetchCards(nameFilter, setFilter, page, numberOfItems)))
         }
     }
 }

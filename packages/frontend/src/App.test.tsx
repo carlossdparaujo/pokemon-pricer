@@ -12,6 +12,15 @@ const stubPriceSummary = (cardId: string) => ({
   p99: 6.5,
 })
 
+const makeCards = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `base1-${i}`,
+    name: 'Pikachu',
+    set: 'Base Set',
+    imageUrl: 'https://img/pikachu.png',
+    priceSummary: stubPriceSummary(`base1-${i}`),
+  }))
+
 function stubFetch(cards: object[]) {
   vi.stubGlobal(
     'fetch',
@@ -24,6 +33,17 @@ test('renders Pokémon Pricer heading', () => {
   expect(screen.getByRole('heading', { name: /Pokémon Pricer/i })).toBeInTheDocument()
 })
 
+test('scrolls to top when a search is submitted', () => {
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
 test('search submits name and set as query params to the BFF', () => {
   const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
   vi.stubGlobal('fetch', fetchMock)
@@ -33,7 +53,7 @@ test('search submits name and set as query params to the BFF', () => {
   fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
   fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
 
-  expect(fetchMock).toHaveBeenCalledWith('/api/pokemon-cards?name=Pikachu&set=Base')
+  expect(fetchMock).toHaveBeenCalledWith('/api/pokemon-cards?name=Pikachu&set=Base&page=1')
 })
 
 test('renders a list of cards returned by the BFF', async () => {
@@ -153,4 +173,122 @@ test('renders priceSummary values formatted as dollars', async () => {
   expect(screen.getByText('$330.00')).toBeInTheDocument()
   expect(screen.getByText('$500.00')).toBeInTheDocument()
   expect(screen.getByText('$750.00')).toBeInTheDocument()
+})
+
+test('scrolls to top when navigating to the next page', async () => {
+  const body = JSON.stringify({ cards: makeCards(20) })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fetchMock.mockReturnValue(new Promise(() => {}))
+  scrollTo.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
+test('scrolls to top when navigating to the previous page', async () => {
+  const body = JSON.stringify({ cards: makeCards(20) })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  fetchMock.mockReturnValue(new Promise(() => {}))
+  scrollTo.mockClear()
+  fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
+
+test('page resets to 1 when a new search starts', async () => {
+  const body = JSON.stringify({ cards: makeCards(20) })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+
+  // First search on page 1
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  // Go to next page
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  // Submit a new search — page should reset to 1
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
+})
+
+test('Previous button is disabled on page 1', async () => {
+  stubFetch(makeCards(20))
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled()
+})
+
+test('pagination bar is hidden when fewer than 20 cards are returned', async () => {
+  stubFetch(makeCards(19))
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(19))
+  expect(screen.queryByTestId('pagination-bar')).not.toBeInTheDocument()
+})
+
+test('clicking Next increments page and re-fetches with new page number', async () => {
+  const body = JSON.stringify({ cards: makeCards(20) })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
+  expect(lastCallUrl).toContain('page=2')
+})
+
+test('clicking Previous decrements page and re-fetches with new page number', async () => {
+  const body = JSON.stringify({ cards: makeCards(20) })
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  // Go to page 2 first
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  // Go back to page 1
+  fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
+
+  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
+  expect(lastCallUrl).toContain('page=1')
 })
