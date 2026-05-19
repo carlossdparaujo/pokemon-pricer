@@ -64,6 +64,40 @@ test('shows empty state when no cards are returned', async () => {
   })
 })
 
+test('pokeball gains spinning class while search is in progress', () => {
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  const pokeball = screen.getByTestId('pokeball')
+  expect(pokeball.className).not.toMatch(/spinning/)
+
+  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+
+  expect(pokeball.className).toMatch(/spinning/)
+})
+
+test('hides form fields while search is in progress', () => {
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+
+  expect(screen.queryByPlaceholderText('Pokémon name')).not.toBeInTheDocument()
+  expect(screen.queryByPlaceholderText('Set name')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument()
+})
+
+test('shows form fields again after search completes', async () => {
+  stubFetch([])
+
+  render(<App />)
+  fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
+
+  await waitFor(() => expect(screen.getByPlaceholderText('Pokémon name')).toBeInTheDocument())
+  expect(screen.getByPlaceholderText('Set name')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument()
+})
+
 test('renders priceSummary values formatted as dollars', async () => {
   stubFetch([
     {
