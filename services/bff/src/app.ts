@@ -3,6 +3,9 @@ import { Hono } from 'hono'
 const POKEMON_CARDS_SERVICE_URL =
   process.env.POKEMON_CARDS_SERVICE_URL ?? 'http://localhost:8080'
 
+const POKEMON_PRICES_SERVICE_URL =
+  process.env.POKEMON_PRICES_SERVICE_URL ?? 'http://localhost:8081'
+
 const app = new Hono()
 
 app.get('/api/health', (c) => c.json({ status: 'ok' }))
@@ -27,10 +30,32 @@ app.get('/api/pokemon-cards', async (c) => {
       return c.json({ error: 'Failed to fetch cards' }, 500)
     }
 
-    const data = await upstream.json()
-    return c.json(data)
+    return c.json(await upstream.json())
   } catch {
     return c.json({ error: 'Failed to fetch cards' }, 500)
+  }
+})
+
+app.post('/api/pokemon-prices', async (c) => {
+  try {
+    const body = await c.req.json()
+
+    const upstream = await fetch(
+      `${POKEMON_PRICES_SERVICE_URL}/prices/batch`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
+    )
+
+    if (!upstream.ok) {
+      return c.json({ error: 'Failed to fetch prices' }, 500)
+    }
+
+    return c.json(await upstream.json())
+  } catch {
+    return c.json({ error: 'Failed to fetch prices' }, 500)
   }
 })
 

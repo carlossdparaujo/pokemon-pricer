@@ -3,6 +3,13 @@ import App from './App'
 
 afterEach(() => vi.unstubAllGlobals())
 
+interface CardFixture {
+  id: string
+  name: string
+  set: string
+  imageUrl: string
+}
+
 const stubPriceSummary = (cardId: string) => ({
   cardId,
   average: 2.5,
@@ -12,20 +19,33 @@ const stubPriceSummary = (cardId: string) => ({
   p99: 6.5,
 })
 
-const makeCards = (n: number) =>
+const makeCards = (n: number): CardFixture[] =>
   Array.from({ length: n }, (_, i) => ({
     id: `base1-${i}`,
     name: 'Pikachu',
     set: 'Base Set',
     imageUrl: 'https://img/pikachu.png',
-    priceSummary: stubPriceSummary(`base1-${i}`),
   }))
 
-function stubFetch(cards: object[]) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue(new Response(JSON.stringify({ cards }), { status: 200 }))
+function stubFetch(cards: CardFixture[], customPriceMap?: Record<string, object>) {
+  const priceMap = customPriceMap ?? Object.fromEntries(
+    cards.map(c => [c.id, stubPriceSummary(c.id)])
   )
+  vi.stubGlobal('fetch', vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ cards }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify(priceMap), { status: 200 }))
+  )
+}
+
+// For pagination tests that re-fetch on every page change
+function makeSearchFetchMock(cards: CardFixture[]) {
+  const priceMap = Object.fromEntries(cards.map(c => [c.id, stubPriceSummary(c.id)]))
+  return vi.fn().mockImplementation((url: string | URL, options?: RequestInit) => {
+    if (url.toString().includes('/api/pokemon-prices')) {
+      return Promise.resolve(new Response(JSON.stringify(priceMap), { status: 200 }))
+    }
+    return Promise.resolve(new Response(JSON.stringify({ cards }), { status: 200 }))
+  })
 }
 
 test('renders Pokémon Pricer heading', () => {
@@ -58,8 +78,8 @@ test('search submits name and set as query params to the BFF', () => {
 
 test('renders a list of cards returned by the BFF', async () => {
   stubFetch([
-    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') },
-    { id: 'neo1-16', name: 'Pikachu', set: 'Neo Genesis', imageUrl: 'https://img/pikachu2.png', priceSummary: stubPriceSummary('neo1-16') },
+    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png' },
+    { id: 'neo1-16', name: 'Pikachu', set: 'Neo Genesis', imageUrl: 'https://img/pikachu2.png' },
   ])
 
   render(<App />)
@@ -112,9 +132,7 @@ test('form fades out while search is in progress', () => {
 })
 
 test('fades out previous results when a new search starts', async () => {
-  stubFetch([
-    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') },
-  ])
+  stubFetch([{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png' }])
 
   render(<App />)
   fireEvent.submit(screen.getByTestId('search-form'))
@@ -145,23 +163,64 @@ test('results container fades back in after search completes', async () => {
   await waitFor(() => expect(screen.getByTestId('results-container').className).not.toMatch(/resultsHidden/))
 })
 
-test('renders priceSummary values formatted as dollars', async () => {
-  stubFetch([
-    {
-      id: 'base1-4',
-      name: 'Charizard',
-      set: 'Base Set',
-      imageUrl: 'https://img/charizard.png',
-      priceSummary: {
-        cardId: 'base1-4',
-        average: 350.0,
-        p10: 200.0,
-        p50: 330.0,
-        p90: 500.0,
-        p99: 750.0,
-      },
-    },
+test('cards are visible before prices finish loading', async () => {
+  const cards = [{ id: 'base1-4', name: 'Charizard', set: 'Base Set', imageUrl: 'https://img/c.png' }]
+  vi.stubGlobal('fetch', vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ cards }), { status: 200 }))
+    .mockReturnValueOnce(new Promise(() => {}))
+  )
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  expect(screen.getByText('Base Set')).toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Charizard' })).toBeInTheDocument()
+})
+
+test('shows loading placeholder while prices are being fetched', async () => {
+  const cards = [{ id: 'base1-4', name: 'Charizard', set: 'Base Set', imageUrl: 'https://img/c.png' }]
+  vi.stubGlobal('fetch', vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ cards }), { status: 200 }))
+    .mockReturnValueOnce(new Promise(() => {}))
+  )
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+  expect(screen.getByTestId('prices-loading-indicator')).toBeInTheDocument()
+})
+
+test('fetches prices for all returned cards via POST /api/pokemon-prices', async () => {
+  const cards = [
+    { id: 'base1-4', name: 'Charizard', set: 'Base Set', imageUrl: 'https://img/c.png' },
+    { id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/p.png' },
+  ]
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce(new Response(JSON.stringify({ cards }), { status: 200 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByText('Charizard')).toBeInTheDocument())
+
+  const [pricesUrl, pricesOptions] = fetchMock.mock.calls[1]
+  expect(pricesUrl).toBe('/api/pokemon-prices')
+  expect(pricesOptions.method).toBe('POST')
+  expect(JSON.parse(pricesOptions.body as string)).toEqual([
+    { cardId: 'base1-4', name: 'Charizard', set: 'Base Set' },
+    { cardId: 'base1-25', name: 'Pikachu', set: 'Base Set' },
   ])
+})
+
+test('renders price values formatted as dollars after prices load', async () => {
+  const cards = [{ id: 'base1-4', name: 'Charizard', set: 'Base Set', imageUrl: 'https://img/c.png' }]
+  const priceMap = {
+    'base1-4': { cardId: 'base1-4', average: 350.0, p10: 200.0, p50: 330.0, p90: 500.0, p99: 750.0 },
+  }
+  stubFetch(cards, priceMap)
 
   render(<App />)
   fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
@@ -176,8 +235,8 @@ test('renders priceSummary values formatted as dollars', async () => {
 })
 
 test('scrolls to top when navigating to the next page', async () => {
-  const body = JSON.stringify({ cards: makeCards(20) })
-  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  const cards = makeCards(20)
+  const fetchMock = makeSearchFetchMock(cards)
   vi.stubGlobal('fetch', fetchMock)
   const scrollTo = vi.fn()
   vi.stubGlobal('scrollTo', scrollTo)
@@ -186,7 +245,7 @@ test('scrolls to top when navigating to the next page', async () => {
   fireEvent.submit(screen.getByTestId('search-form'))
   await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
 
-  fetchMock.mockReturnValue(new Promise(() => {}))
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
   scrollTo.mockClear()
   fireEvent.click(screen.getByRole('button', { name: /next page/i }))
 
@@ -194,8 +253,8 @@ test('scrolls to top when navigating to the next page', async () => {
 })
 
 test('scrolls to top when navigating to the previous page', async () => {
-  const body = JSON.stringify({ cards: makeCards(20) })
-  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  const cards = makeCards(20)
+  const fetchMock = makeSearchFetchMock(cards)
   vi.stubGlobal('fetch', fetchMock)
   const scrollTo = vi.fn()
   vi.stubGlobal('scrollTo', scrollTo)
@@ -207,7 +266,7 @@ test('scrolls to top when navigating to the previous page', async () => {
   fireEvent.click(screen.getByRole('button', { name: /next page/i }))
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
 
-  fetchMock.mockReturnValue(new Promise(() => {}))
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
   scrollTo.mockClear()
   fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
 
@@ -215,21 +274,17 @@ test('scrolls to top when navigating to the previous page', async () => {
 })
 
 test('page resets to 1 when a new search starts', async () => {
-  const body = JSON.stringify({ cards: makeCards(20) })
-  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
-  vi.stubGlobal('fetch', fetchMock)
+  const cards = makeCards(20)
+  vi.stubGlobal('fetch', makeSearchFetchMock(cards))
 
   render(<App />)
 
-  // First search on page 1
   fireEvent.submit(screen.getByTestId('search-form'))
   await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
 
-  // Go to next page
   fireEvent.click(screen.getByRole('button', { name: /next page/i }))
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
 
-  // Submit a new search — page should reset to 1
   fireEvent.submit(screen.getByTestId('search-form'))
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
 })
@@ -256,8 +311,8 @@ test('pagination bar is hidden when fewer than 20 cards are returned', async () 
 })
 
 test('clicking Next increments page and re-fetches with new page number', async () => {
-  const body = JSON.stringify({ cards: makeCards(20) })
-  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  const cards = makeCards(20)
+  const fetchMock = makeSearchFetchMock(cards)
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
@@ -268,27 +323,23 @@ test('clicking Next increments page and re-fetches with new page number', async 
 
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
 
-  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
-  expect(lastCallUrl).toContain('page=2')
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('page=2'))
 })
 
 test('clicking Previous decrements page and re-fetches with new page number', async () => {
-  const body = JSON.stringify({ cards: makeCards(20) })
-  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(body, { status: 200 })))
+  const cards = makeCards(20)
+  const fetchMock = makeSearchFetchMock(cards)
   vi.stubGlobal('fetch', fetchMock)
 
   render(<App />)
   fireEvent.submit(screen.getByTestId('search-form'))
   await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
 
-  // Go to page 2 first
   fireEvent.click(screen.getByRole('button', { name: /next page/i }))
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
 
-  // Go back to page 1
   fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
   await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
 
-  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
-  expect(lastCallUrl).toContain('page=1')
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('page=1'))
 })

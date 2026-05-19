@@ -15,7 +15,7 @@ private data class TcgDexCardBrief(val id: String, val name: String, val image: 
 @Serializable
 private data class TcgDexSetBrief(val id: String, val name: String)
 
-class TcgDexCardsFetcher(private val pricesFetcher: PricesFetcher) {
+class TcgDexCardsFetcher {
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
@@ -46,7 +46,7 @@ class TcgDexCardsFetcher(private val pricesFetcher: PricesFetcher) {
             if (nameFilter != null) parameter("name", nameFilter)
             paginationParams(page, numberOfItems)
         }.body<List<TcgDexCardBrief>>()
-            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image), priceSummary = pricesFetcher(card.id)) }
+            .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image)) }
 
     private suspend fun fetchCardsBriefByName(nameFilter: String?, page: Int, numberOfItems: Int): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
@@ -66,9 +66,9 @@ class TcgDexCardsFetcher(private val pricesFetcher: PricesFetcher) {
             runCatching { client.get("$BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
         }
 
-    private suspend fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {
+    private fun toCard(brief: TcgDexCardBrief, setNames: Map<String, String>): Card {
         val setId = setIdFromCardId(brief.id)
-        return Card(id = brief.id, name = brief.name, set = setNames[setId] ?: setId, imageUrl = imageUrl(brief.image), priceSummary = pricesFetcher(brief.id))
+        return Card(id = brief.id, name = brief.name, set = setNames[setId] ?: setId, imageUrl = imageUrl(brief.image))
     }
 
     private fun setIdFromCardId(cardId: String): String = cardId.substringBeforeLast("-")

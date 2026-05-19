@@ -149,12 +149,6 @@
   text-align: center;
 }
 
-.prices {
-  margin: 0.5rem 0 0;
-  padding: 0;
-  width: 100%;
-}
-
 .priceRow {
   display: flex;
   justify-content: space-between;
@@ -186,4 +180,43 @@
   color: #ffffff;
   font-size: 1rem;
   font-weight: 600;
+}
+
+.priceArea {
+  position: relative;
+  margin-top: 0.5rem;
+  width: 100%;
+  min-height: 40px;
+}
+
+.pricesPokeballWrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 0.25rem;
+  transition: opacity 0.4s ease;
+}
+
+.pricesPokeballHidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pricesPokeballSpinner {
+  width: 24px;
+  height: 24px;
+  animation: spin 1.2s linear infinite;
+}
+
+.prices {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  transition: opacity 0.4s ease;
+}
+
+.pricesHidden {
+  opacity: 0;
+  pointer-events: none;
 }
