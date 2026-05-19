@@ -1,15 +1,19 @@
 package com.pokemonpricer.pokemoncardsservice
 
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation as ClientContentNegotiation
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import net.tcgdex.sdk.TCGdex
 
 @Serializable
 data class Card(
@@ -22,30 +26,58 @@ data class Card(
 @Serializable
 data class CardsResponse(val cards: List<Card>)
 
-// Inject for testability
-typealias CardsFetcher = (nameFilter: String?, setFilter: String?) -> List<Card>
+@Serializable
+private data class TcgDexCardBrief(val id: String, val name: String, val image: String? = null)
 
-fun buildCardsFetcher(): CardsFetcher = { nameFilter, setFilter ->
-    val api = TCGdex("en")
-    val resumes = api.fetchCards() ?: emptyArray()
+@Serializable
+private data class TcgDexSetBrief(val id: String, val name: String)
 
-    // Filter by name in-memory first (cheap)
-    val nameMatched = resumes.filter { card ->
-        nameFilter == null || card.name.lowercase().contains(nameFilter)
+typealias CardsFetcher = suspend (nameFilter: String?, setFilter: String?) -> List<Card>
+
+private const val TCGDEX_BASE_URL = "https://api.tcgdex.net/v2/en"
+
+private val tcgDexJson = Json { ignoreUnknownKeys = true }
+
+fun buildCardsFetcher(): CardsFetcher {
+    val client = HttpClient(CIO) {
+        install(ClientContentNegotiation) { json(tcgDexJson) }
     }
-
-    // For each name-matched card, fetch full card to get set name (needed for set filter + response)
-    nameMatched.mapNotNull { resume ->
-        api.fetchCard(resume.id)
-    }.filter { card ->
-        setFilter == null || card.set.name.lowercase().contains(setFilter)
-    }.map { card ->
-        Card(
-            id = card.id,
-            name = card.name,
-            set = card.set.name,
-            imageUrl = card.image?.let { "$it/high.webp" } ?: "",
-        )
+    return { nameFilter, setFilter ->
+        if (setFilter != null) {
+            val sets = client.get("$TCGDEX_BASE_URL/sets") {
+                parameter("name", setFilter)
+            }.body<List<TcgDexSetBrief>>()
+            sets.flatMap { set ->
+                client.get("$TCGDEX_BASE_URL/sets/${set.id}/cards") {
+                    if (nameFilter != null) parameter("name", nameFilter)
+                }.body<List<TcgDexCardBrief>>()
+                    .map { card ->
+                        Card(
+                            id = card.id,
+                            name = card.name,
+                            set = set.name,
+                            imageUrl = card.image?.let { "$it/high.webp" } ?: "",
+                        )
+                    }
+            }
+        } else {
+            val cards = client.get("$TCGDEX_BASE_URL/cards") {
+                if (nameFilter != null) parameter("name", nameFilter)
+            }.body<List<TcgDexCardBrief>>()
+            val setIds = cards.map { it.id.substringBeforeLast("-") }.distinct()
+            val setNames = setIds.associateWith { setId ->
+                runCatching { client.get("$TCGDEX_BASE_URL/sets/$setId").body<TcgDexSetBrief>().name }.getOrElse { setId }
+            }
+            cards.map { card ->
+                val setId = card.id.substringBeforeLast("-")
+                Card(
+                    id = card.id,
+                    name = card.name,
+                    set = setNames[setId] ?: setId,
+                    imageUrl = card.image?.let { "$it/high.webp" } ?: "",
+                )
+            }
+        }
     }
 }
 
