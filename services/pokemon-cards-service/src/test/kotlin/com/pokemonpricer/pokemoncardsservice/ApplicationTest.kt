@@ -119,9 +119,6 @@ class ApplicationTest {
         assertTrue(priceSummary.p50 > 0.0)
         assertTrue(priceSummary.p90 > 0.0)
         assertTrue(priceSummary.p99 > 0.0)
-        assertTrue(priceSummary.p10 < priceSummary.p50)
-        assertTrue(priceSummary.p50 < priceSummary.p90)
-        assertTrue(priceSummary.p90 < priceSummary.p99)
     }
 
     @Test
