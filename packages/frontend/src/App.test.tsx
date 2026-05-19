@@ -33,7 +33,7 @@ test('search submits name and set as query params to the BFF', () => {
   fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
   fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
 
-  expect(fetchMock).toHaveBeenCalledWith('/api/pokemon-cards?name=Pikachu&set=Base')
+  expect(fetchMock).toHaveBeenCalledWith('/api/pokemon-cards?name=Pikachu&set=Base&page=1')
 })
 
 test('renders a list of cards returned by the BFF', async () => {
@@ -153,4 +153,76 @@ test('renders priceSummary values formatted as dollars', async () => {
   expect(screen.getByText('$330.00')).toBeInTheDocument()
   expect(screen.getByText('$500.00')).toBeInTheDocument()
   expect(screen.getByText('$750.00')).toBeInTheDocument()
+})
+
+test('page resets to 1 when a new search starts', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+
+  // First search on page 1
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  // Go to next page
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  // Submit a new search — page should reset to 1
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
+})
+
+test('Previous button is disabled on page 1', async () => {
+  stubFetch([{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }])
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  expect(screen.getByRole('button', { name: /previous page/i })).toBeDisabled()
+})
+
+test('clicking Next increments page and re-fetches with new page number', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
+  expect(lastCallUrl).toContain('page=2')
+})
+
+test('clicking Previous decrements page and re-fetches with new page number', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(
+    new Response(JSON.stringify({ cards: [{ id: 'base1-25', name: 'Pikachu', set: 'Base Set', imageUrl: 'https://img/pikachu.png', priceSummary: stubPriceSummary('base1-25') }] }), { status: 200 })
+  )
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+  await waitFor(() => expect(screen.getByTestId('pagination-bar')).toBeInTheDocument())
+
+  // Go to page 2 first
+  fireEvent.click(screen.getByRole('button', { name: /next page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 2'))
+
+  // Go back to page 1
+  fireEvent.click(screen.getByRole('button', { name: /previous page/i }))
+  await waitFor(() => expect(screen.getByTestId('current-page').textContent).toBe('Page 1'))
+
+  const lastCallUrl = fetchMock.mock.calls[fetchMock.mock.calls.length - 1][0] as string
+  expect(lastCallUrl).toContain('page=1')
 })
