@@ -343,3 +343,102 @@ test('clicking Previous decrements page and re-fetches with new page number', as
 
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('page=1'))
 })
+
+// By Name tab: search button disabled state
+test('search button is disabled when name is empty', () => {
+  render(<App />)
+  expect(screen.getByRole('button', { name: /search/i })).toBeDisabled()
+})
+
+test('search button is enabled when name has a value', () => {
+  render(<App />)
+  fireEvent.change(screen.getByPlaceholderText('Pokémon name'), { target: { value: 'Pikachu' } })
+  expect(screen.getByRole('button', { name: /search/i })).not.toBeDisabled()
+})
+
+test('search button stays disabled when set is filled but name is empty', () => {
+  render(<App />)
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base Set' } })
+  expect(screen.getByRole('button', { name: /search/i })).toBeDisabled()
+})
+
+// By Set tab
+test('clicking By Set tab reveals the set search form', () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  expect(screen.getByTestId('set-search-form')).toBeInTheDocument()
+})
+
+test('By Set tab: search button is disabled when set input is empty', () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  expect(screen.getByRole('button', { name: /search/i })).toBeDisabled()
+})
+
+test('By Set tab: search button is enabled when set input has a value', () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base Set' } })
+  expect(screen.getByRole('button', { name: /search/i })).not.toBeDisabled()
+})
+
+test('By Set tab: submitting calls /api/pokemon-cards with set and page=1', () => {
+  const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
+  vi.stubGlobal('fetch', fetchMock)
+
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
+  fireEvent.submit(screen.getByTestId('set-search-form'))
+
+  expect(fetchMock).toHaveBeenCalledWith('/api/pokemon-cards?set=Base&page=1')
+})
+
+test('By Set tab: renders cards without a pagination bar', async () => {
+  const cards = makeCards(20)
+  vi.stubGlobal('fetch', makeSearchFetchMock(cards))
+
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
+  fireEvent.submit(screen.getByTestId('set-search-form'))
+
+  await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(20))
+  expect(screen.queryByTestId('pagination-bar')).not.toBeInTheDocument()
+})
+
+test('By Set tab: shows empty state when no cards are returned', async () => {
+  stubFetch([])
+
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Nonexistent' } })
+  fireEvent.submit(screen.getByTestId('set-search-form'))
+
+  await waitFor(() => expect(screen.getByText('No cards found.')).toBeInTheDocument())
+})
+
+test('By Set tab: pokeball spins while search is in progress', () => {
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
+  fireEvent.submit(screen.getByTestId('set-search-form'))
+
+  expect(screen.getByTestId('pokeball').className).toMatch(/spinning/)
+  expect(screen.getByTestId('pokeball-wrapper').className).toMatch(/bouncing/)
+})
+
+test('By Set tab: scrolls to top when search is submitted', () => {
+  const scrollTo = vi.fn()
+  vi.stubGlobal('scrollTo', scrollTo)
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+
+  render(<App />)
+  fireEvent.click(screen.getByRole('button', { name: /by set/i }))
+  fireEvent.change(screen.getByPlaceholderText('Set name'), { target: { value: 'Base' } })
+  fireEvent.submit(screen.getByTestId('set-search-form'))
+
+  expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+})
