@@ -64,16 +64,21 @@ test('shows empty state when no cards are returned', async () => {
   })
 })
 
-test('pokeball gains spinning class while search is in progress', () => {
+test('pokeball gains spinning class and wrapper gains bouncing class while search is in progress', () => {
   vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
 
   render(<App />)
   const pokeball = screen.getByTestId('pokeball')
+  const wrapper = screen.getByTestId('pokeball-wrapper')
   expect(pokeball.className).not.toMatch(/spinning/)
+  expect(pokeball.className).toMatch(/pokeballShadow/)
+  expect(wrapper.className).not.toMatch(/bouncing/)
 
   fireEvent.submit(screen.getByRole('button', { name: /search/i }).closest('form')!)
 
   expect(pokeball.className).toMatch(/spinning/)
+  expect(pokeball.className).not.toMatch(/pokeballShadow/)
+  expect(wrapper.className).toMatch(/bouncing/)
 })
 
 test('form fades out while search is in progress', () => {
@@ -111,6 +116,15 @@ test('form fades back in after search completes', async () => {
   fireEvent.submit(form)
 
   await waitFor(() => expect(form.className).not.toMatch(/formHidden/))
+})
+
+test('results container fades back in after search completes', async () => {
+  stubFetch([])
+
+  render(<App />)
+  fireEvent.submit(screen.getByTestId('search-form'))
+
+  await waitFor(() => expect(screen.getByTestId('results-container').className).not.toMatch(/resultsHidden/))
 })
 
 test('renders priceSummary values formatted as dollars', async () => {
