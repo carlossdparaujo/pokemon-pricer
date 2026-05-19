@@ -36,18 +36,28 @@ class TcgDexCardsFetcher {
     }
 
     private suspend fun findSetsMatching(setFilter: String): List<TcgDexSetBrief> =
-        client.get("$BASE_URL/sets") { parameter("name", setFilter) }.body()
+        client.get("$BASE_URL/sets") {
+            parameter("name", setFilter)
+            firstPage()
+        }.body()
 
     private suspend fun fetchCardsInSet(set: TcgDexSetBrief, nameFilter: String?): List<Card> =
         client.get("$BASE_URL/sets/${set.id}/cards") {
             if (nameFilter != null) parameter("name", nameFilter)
+            firstPage()
         }.body<List<TcgDexCardBrief>>()
             .map { card -> Card(id = card.id, name = card.name, set = set.name, imageUrl = imageUrl(card.image)) }
 
     private suspend fun fetchCardsBriefByName(nameFilter: String?): List<TcgDexCardBrief> =
         client.get("$BASE_URL/cards") {
             if (nameFilter != null) parameter("name", nameFilter)
+            firstPage()
         }.body()
+
+    private fun HttpRequestBuilder.firstPage() {
+        parameter("pagination:page", 1)
+        parameter("pagination:itemsPerPage", PAGE_SIZE)
+    }
 
     // The /cards endpoint returns no set info — only the card ID encodes the set (e.g. "base1-4" → set "base1").
     // We batch-fetch each unique set to get the display name (e.g. "Base Set") instead of exposing the raw ID.
@@ -67,5 +77,6 @@ class TcgDexCardsFetcher {
 
     companion object {
         private const val BASE_URL = "https://api.tcgdex.net/v2/en"
+        private const val PAGE_SIZE = 20
     }
 }

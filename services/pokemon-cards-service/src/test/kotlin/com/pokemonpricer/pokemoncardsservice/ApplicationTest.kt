@@ -82,6 +82,16 @@ class ApplicationTest {
     }
 
     @Test
+    fun `returns all cards provided by fetcher up to page size`() = testApp(
+        fetcher = { _, _ -> (1..20).map { i -> Card("set1-$i", "Card $i", "Set One", "https://img/$i.png") } }
+    ) {
+        val client = createClient { install(ContentNegotiation) { json() } }
+        val res = client.get("/cards")
+        assertEquals(HttpStatusCode.OK, res.status)
+        assertEquals(20, res.body<CardsResponse>().cards.size)
+    }
+
+    @Test
     fun `response card shape has expected fields`() = testApp(
         fetcher = { _, _ ->
             listOf(Card("base1-4", "Charizard", "Base Set", "https://img/charizard.png"))
