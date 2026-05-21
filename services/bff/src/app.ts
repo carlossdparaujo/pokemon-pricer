@@ -3,10 +3,10 @@ import { CardsClient, createCardsClient } from './cards-client.js'
 import { PricesClient, createPricesClient } from './prices-client.js'
 
 const POKEMON_CARDS_SERVICE_GRPC_ADDRESS =
-  process.env.POKEMON_CARDS_SERVICE_GRPC_ADDRESS ?? 'localhost:9090'
+  process.env.POKEMON_CARDS_SERVICE_GRPC_ADDRESS ?? 'localhost:50051'
 
 const POKEMON_PRICES_SERVICE_GRPC_ADDRESS =
-  process.env.POKEMON_PRICES_SERVICE_GRPC_ADDRESS ?? 'localhost:9091'
+  process.env.POKEMON_PRICES_SERVICE_GRPC_ADDRESS ?? 'localhost:50050'
 
 export function createApp(cardsClient: CardsClient, pricesClient: PricesClient): Hono {
   const app = new Hono()
