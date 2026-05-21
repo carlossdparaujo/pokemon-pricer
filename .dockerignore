@@ -1,0 +1,7 @@
+.git
+**/node_modules
+**/.gradle
+**/build
+**/dist
+**/coverage
+.DS_Store
