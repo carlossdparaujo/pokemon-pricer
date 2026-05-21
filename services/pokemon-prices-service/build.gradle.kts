@@ -2,8 +2,9 @@ import com.google.protobuf.gradle.id
 
 plugins {
     kotlin("jvm") version "2.1.20"
-    application
     id("com.google.protobuf") version "0.9.4"
+    id("com.gradleup.shadow") version "8.3.6"
+    application
 }
 
 group = "com.pokemonpricer"
@@ -60,4 +61,8 @@ protobuf {
             it.builtins { id("kotlin") }
         }
     }
+}
+
+tasks.shadowJar {
+    archiveFileName.set("app.jar")
 }

@@ -8,7 +8,7 @@
     "dev:bff": "pnpm --filter @pokemon-pricer/bff dev",
     "dev:pokemon-cards-service": "cd services/pokemon-cards-service && JAVA_HOME=/opt/homebrew/opt/openjdk@21 gradle run",
     "dev:pokemon-prices-service": "cd services/pokemon-prices-service && JAVA_HOME=/opt/homebrew/opt/openjdk@21 gradle run",
-    "stop": "lsof -ti :3000,:5173,:8080,:8081 | xargs kill -9 2>/dev/null || true",
+    "stop": "lsof -ti :3000,:5173,:9090,:9091 | xargs kill -9 2>/dev/null || true",
     "build": "pnpm -r build",
     "test": "pnpm -r test"
   }
