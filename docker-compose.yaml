@@ -1,0 +1,30 @@
+services:
+  cards-service:
+    build:
+      context: services/pokemon-cards-service
+
+  prices-service:
+    build:
+      context: services/pokemon-prices-service
+
+  bff:
+    build:
+      context: .
+      dockerfile: Dockerfile.bff
+    ports:
+      - "3000:3000"
+    environment:
+      POKEMON_CARDS_SERVICE_GRPC_ADDRESS: cards-service:50051
+      POKEMON_PRICES_SERVICE_GRPC_ADDRESS: prices-service:50051
+    depends_on:
+      - cards-service
+      - prices-service
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - bff
