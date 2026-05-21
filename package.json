@@ -3,12 +3,12 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "dev": "pnpm run dev:pokemon-cards-service & pnpm run dev:pokemon-prices-service & pnpm run dev:bff & pnpm run dev:frontend",
+    "dev": "GRPC_PORT=50051 pnpm run dev:pokemon-cards-service & GRPC_PORT=50050 pnpm run dev:pokemon-prices-service & POKEMON_CARDS_SERVICE_GRPC_ADDRESS=localhost:50051 POKEMON_PRICES_SERVICE_GRPC_ADDRESS=localhost:50050 pnpm run dev:bff & pnpm run dev:frontend",
     "dev:frontend": "pnpm --filter @pokemon-pricer/frontend dev",
     "dev:bff": "pnpm --filter @pokemon-pricer/bff dev",
     "dev:pokemon-cards-service": "cd services/pokemon-cards-service && JAVA_HOME=/opt/homebrew/opt/openjdk@21 gradle run",
     "dev:pokemon-prices-service": "cd services/pokemon-prices-service && JAVA_HOME=/opt/homebrew/opt/openjdk@21 gradle run",
-    "stop": "lsof -ti :3000,:5173,:9090,:9091 | xargs kill -9 2>/dev/null || true",
+    "stop": "lsof -ti :3000 -i :5173 -i :50050 -i :50051 | xargs kill -9 2>/dev/null || true",
     "build": "pnpm -r build",
     "test": "pnpm -r test"
   }

@@ -19,12 +19,13 @@ private val logger = LoggerFactory.getLogger("com.pokemonpricer.pokemoncardsserv
 fun main() {
     val cardsFetcher = TcgDexCardsFetcher().build()
 
-    val grpcServer = ServerBuilder.forPort(50051)
+    val port = System.getenv("GRPC_PORT")?.toInt() ?: 50051
+    val grpcServer = ServerBuilder.forPort(port)
         .addService(PokemonCardsGrpcService(cardsFetcher))
         .build()
         .start()
 
-    logger.info("Pokemon Cards service started on port 50051")
+    logger.info("Pokemon Cards service started on port $port")
     Runtime.getRuntime().addShutdownHook(Thread {
         logger.info("Shutting down Pokemon Cards service")
         grpcServer.shutdown()
