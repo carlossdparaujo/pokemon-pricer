@@ -84,3 +84,6 @@ class TcgDexCardsFetcher(engine: HttpClientEngine = CIO.create()) {
         private const val BASE_URL = "https://api.tcgdex.net/v2/en"
     }
 }
+
+// Copyright (c) 2021 TCGdex
+// https://github.com/tcgdex/cards-database/blob/master/LICENSE
